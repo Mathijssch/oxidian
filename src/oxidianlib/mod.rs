@@ -5,6 +5,7 @@ pub mod note;
 //mod preprocessing;
 mod obs_comments;
 mod obs_admonitions; 
+mod obs_links;
 //mod obs_references; 
 mod html;
 mod utils;
