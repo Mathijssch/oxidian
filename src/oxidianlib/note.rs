@@ -16,22 +16,21 @@ pub struct Note<'a> {
 
 impl<'a> Note<'a> { 
    
-    pub fn new<T: AsRef<Path>>(path: T) -> Result<Self, std::io::Error> {
-        return Self::new_inner(path.as_ref());
-    }
+    //pub fn new<'a, T>: AsRef<Path>>(path: T) -> Result<Self, std::io::Error> {
+    //    return Self::new_inner(path.as_ref());
+    //}
 
 
-    fn new_inner(path: &'a Path) -> Result<Self, std::io::Error> {
+    pub fn new(path: &'a Path) -> Result<Self, std::io::Error> {
         let content = Self::sanitize(&read_note_from_file(path)?);  
-        let links = Self::find_obsidian_links(&content);
-        
-
+        let links = Self::find_obsidian_links(&content); 
+        Ok(Note{
+            path, links, content: None, title: None
+        })
     }
         
     fn find_obsidian_links(content: &str) -> Vec<Link> {
-        obs_links::find_obsidian_links(content);
-          
-
+        obs_links::find_obsidian_links(content) 
     }
 
     fn sanitize(content: &str) -> String { 
@@ -48,27 +47,27 @@ impl<'a> Note<'a> {
 
 
 //Check if a sorted collection of delimiters is balanced.
-fn is_balanced_sorted(delimiters: &Vec<Delimiter>) -> bool {
-    if delimiters.len() % 2 != 0 {
-        return false;
-    }
+//fn is_balanced_sorted(delimiters: &Vec<Delimiter>) -> bool {
+//    if delimiters.len() % 2 != 0 {
+//        return false;
+//    }
 
-    let mut level = 0;
-    for d in delimiters {
-        match d {
-            Delimiter::Begin(_) => {
-                level += 1;
-            }
-            Delimiter::End(_) => {
-                level -= 1;
-            }
-        }
-        if level < 0 {
-            return false;
-        }
-    }
-    level == 0
-}
+//    let mut level = 0;
+//    for d in delimiters {
+//        match d {
+//            Delimiter::Begin(_) => {
+//                level += 1;
+//            }
+//            Delimiter::End(_) => {
+//                level -= 1;
+//            }
+//        }
+//        if level < 0 {
+//            return false;
+//        }
+//    }
+//    level == 0
+//}
 
 fn strip_comments(note: &str) -> String {
     let mut output = String::with_capacity(note.len());
@@ -93,22 +92,27 @@ fn format_admonitions(note: &str) -> String {
     return output;
 }
 
-pub fn parse_note(note: &str, opts: Options) -> String {
-    let stripped = format_obsidian_links(
-        &format_admonitions(
-            &strip_comments(note)
-            )
-        );
 
-    let parser = pulldown_cmark::Parser::new(&stripped);
-    let mut html_output = String::new();
-    //html::push_html(
-    //&mut html_output,
-    //events.iter().map(|e| e.clone().to_owned()),
-    //);
-    html::push_html(&mut html_output, parser);
-    return html_output;
+pub fn create_note(path: &str) -> Note {
+    let the_path = Path::new(path);
+    Note::new(the_path).unwrap()
 }
+
+//pub fn parse_note(note: &str, opts: Options) -> String {
+//    //let stripped = format_obsidian_links(
+//        //&format_admonitions(
+//            //&strip_comments(note)
+//            //)
+//        //); 
+//    let parser = pulldown_cmark::Parser::new(&stripped);
+//    let mut html_output = String::new();
+//    //html::push_html(
+//    //&mut html_output,
+//    //events.iter().map(|e| e.clone().to_owned()),
+//    //);
+//    html::push_html(&mut html_output, parser);
+//    return html_output;
+//}
 
 //let mut events: Vec<&Event>;
 //if let Some(size) = parser.size_hint().1 {

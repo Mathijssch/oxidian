@@ -3,7 +3,7 @@ use clap::Parser;
 use oxidian::oxidianlib::{
     errors::{self, IndexError},
     constants::INDEX_FILE, 
-    note   
+    note::{self, create_note}   
 };
 use pulldown_cmark::Options;
 use std::{path::Path, fs::File, io::{Read, Write}};
@@ -35,12 +35,15 @@ fn main() {
     if let Err(e) = validate_args(&args){
         println!("{}", e);
     };
-    let idx_path = Path::new(&args.dir);
-    let index_note = read_index(&idx_path).unwrap(); 
-    let opts = Options::empty();
-    let html_string = note::parse_note(&index_note, opts); 
-    let out_path = Path::new(&args.out).join("index.html");
-    write_note(&out_path, &html_string);
+    let idx_path = Path::new(&args.dir); 
+    let path = idx_path.join(INDEX_FILE);
+    let note = create_note(path);
+
+    //let index_note = read_index(&idx_path).unwrap(); 
+    //let opts = Options::empty();
+    //let html_string = note::parse_note(&index_note, opts); 
+    //let out_path = Path::new(&args.out).join("index.html");
+    //write_note(&out_path, &html_string);
 }
 
 fn write_note(path: &Path, content: &str) {
