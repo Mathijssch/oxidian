@@ -1,117 +1,124 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use regex::Regex;
 
+lazy_static! {
+    static ref OBSIDIAN_NOTE_LINK_RE: Regex =
+        Regex::new(r"^(?P<file>[^#|]+)??(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
+}
+
 use super::errors;
 
+#[derive(Debug)]
 pub struct Link {
     pub target: PathBuf,
     pub subtarget: Option<String>,
     pub alias: Option<String>,
-    pub link_type: LinkType,
-    source_string: String
+    source_string: String,
+    is_attachment: bool,
 }
 
 pub enum LinkType {
     External,
     Note,
     Internal(InternalType),
+    Attachment(FileType),
+}
+
+pub enum FileType {
+    Pdf,
     Image,
     Video,
-    Document,
+    Audio,
+    Misc,
 }
 
 pub enum InternalType {
-    Header, 
-    Blockref
+    Header,
+    Blockref,
 }
 
+type InvalidLink = errors::InvalidObsidianLink<String, String>;
+
+// TODO -- make smaller by using references.
+struct Capture {
+    file: String,
+    internal_ref: Option<String>,
+    alias: Option<String>,
+}
+
+fn attachment_type_from_file(file: &Path) -> FileType {
+    let ext_own = match file.extension() {
+        Some(e) => {
+            e.to_string_lossy().to_lowercase() 
+        },
+        None => {
+            return FileType::Misc;
+        }
+    };
+    let ext = ext_own.as_str();  
+    //TODO -- Something weird is going on here: double reference??
+    if ext.len() >= 5 {
+        // very long file extension, probably a false positive.
+        return FileType::Misc;
+    }
+
+    if super::constants::IMG_EXT.contains(&ext) {
+        return FileType::Image;
+    }
+
+    if super::constants::VIDEO_EXT.contains(&ext) {
+        return FileType::Video;
+    }
+
+    if super::constants::AUDIO_EXT.contains(&ext) {
+        return FileType::Audio;
+    }
+    // TODO: Try to find the extension in a more rigorous way.
+    match ext {
+        "pdf" => FileType::Pdf,
+        _ => FileType::Misc,
+    }
+}
 
 impl Link {
+    pub fn link_type(&self) -> LinkType {
+        if self.is_attachment {
+            let attach_type = attachment_type_from_file(&self.target);
+            return LinkType::Attachment(attach_type);
+        };
+
+        if &self.target.starts_with("http://") | &self.target.starts_with("https://") {
+            return LinkType::External;
+        };
+
+        return LinkType::Note;
+    }
+
     ///Construct a new [Link] from an Obsidian-styled reference
-    pub fn from_obsidian_link(obs_link: &str, is_attachment: bool) -> Result<Link, errors::InvalidObsidianLink<String, String>> {
-        let mut extended_link = false; 
-        let mut target = PathBuf::from(obs_link);
-        let mut subtarget = None; 
-        let mut link_type = LinkType::Note;
-        let mut target: PathBuf;
-        let mut captures;
-        let mut alias = None;  
-        if is_attachment {
-            // TODO 
-            link_type = LinkType::Image;
-        }
-        if obs_link.contains(r"#") {
-            captures = LINK_INTERNAL
-                .captures(obs_link)
-                .ok_or_else(
-                    || errors::InvalidObsidianLink::ParseError(obs_link.to_string())
-                    )?;
-            extended_link = true; 
-        }
-        else { 
-            if let Some(reg_capture) = LINK_REGULAR.captures(obs_link) { 
-                extended_link = true; 
-                captures = reg_capture; 
-            } 
-        }
-        
-        if !extended_link {
-            target = 
-            return Ok(Link{
-                target, subtarget, alias, link_type, source_string: obs_link.to_string()
-            }); 
-        } 
+    pub fn from_obsidian_link(
+        obs_link: &str,
+        is_attachment: bool,
+    ) -> Result<Link, errors::InvalidObsidianLink<String, String>> {
+        let captures = OBSIDIAN_NOTE_LINK_RE
+            .captures(obs_link)
+            .ok_or_else(|| errors::InvalidObsidianLink::ParseError(obs_link.to_string()))?;
+        let target = captures
+            .name("file")
+            .ok_or_else(|| errors::InvalidObsidianLink::MissingMatchGroup {
+                link: obs_link.to_string(),
+                group: "file".to_string(),
+            })?
+            .as_str();
+        let alias = captures.name("label").map(|v| v.as_str().to_string());
+        let subtarget = captures.name("section").map(|v| v.as_str().to_string());
 
-        if let Some(has_sublink) = captures.name("has_sublink") 
-        {
-            if !has_sublink.is_empty() { 
-                let link_subtype = link_type_from_syntax(has_sublink.as_str());
-                let subtarget_str = captures.name("subtarget")
-                    .ok_or_else(|| errors::InvalidObsidianLink::MissingMatchGroup{
-                        link: obs_link.to_string(), group: "subtarget".to_string()
-                    })?
-                    .as_str();
-                    link_type = LinkType::Internal(link_subtype);
-                    subtarget = Some(subtarget_str.to_string()); 
-            }
-        }
-        if let Some(has_alias) = captures.name("has_alias")  
-        {
-            if !has_alias.is_empty() {  
-                let alias_str = captures.name("alias")
-                    .ok_or_else(|| errors::InvalidObsidianLink::MissingMatchGroup{ 
-                        link: obs_link.to_string(), group: "alias".to_string() 
-                })?
-                .as_str();
-                alias = Some(alias_str.to_string());
-            }
-        }
-        Ok(
-            Link{
-                target, subtarget, alias, link_type, source_string: obs_link.to_string()
-        }
-        )
+        Ok(Link {
+            target: PathBuf::from(target),
+            subtarget,
+            alias,
+            is_attachment,
+            source_string: obs_link.to_string(),
+        })
     }
-}
-
-
-fn link_type_from_syntax(syntax: &str) -> InternalType {
-    match syntax {
-        "#" => InternalType::Header, 
-        "#^" => InternalType::Blockref
-    }
-
-}
-
-
-
-lazy_static! {
-    static ref LINK_INTERNAL: Regex =
-        Regex::new(r"(?P<file>[^#|^\n]*)(?P<has_sublink>[#]\^?)(?P<subtarget>[^#|^\n]+)(?P<has_alias>\|?)(?P<alias>.*)")
-        .unwrap();
-
-    static ref LINK_REGULAR: Regex =
-        Regex::new(r"(?P<file>[^|\n]*)(?P<has_alias>\|?)(?P<alias>.*)")
-        .unwrap();
 }

@@ -6,13 +6,13 @@ use pulldown_cmark::{html, Event, Options, Parser, Tag};
 use super::utils::read_note_from_file;
 
 
+#[derive(Debug)]
 pub struct Note<'a> {
     pub path: &'a Path, 
     pub links: Vec<Link>,
     content: Option<&'a str>,
     title: Option<String>,  
 }
-
 
 impl<'a> Note<'a> { 
    
