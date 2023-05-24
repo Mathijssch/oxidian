@@ -1,8 +1,11 @@
 use std::path::Path;
 
+use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use super::link::Link;
-use super::{obs_admonitions, obs_comments, obs_links};
+use super::{obs_admonitions, obs_comments, obs_links, frontmatter};
 use pulldown_cmark::{html, Event, Options, Parser, Tag};
+use serde::__private::de::Content;
+use yaml_rust::Yaml;
 use super::utils::read_note_from_file;
 
 
@@ -10,22 +13,51 @@ use super::utils::read_note_from_file;
 pub struct Note<'a> {
     pub path: &'a Path, 
     pub links: Vec<Link>,
+    pub frontmatter: Option<Yaml>,
     content: Option<&'a str>,
-    title: Option<String>,  
+    title: String,  
 }
 
 impl<'a> Note<'a> { 
-   
-    //pub fn new<'a, T>: AsRef<Path>>(path: T) -> Result<Self, std::io::Error> {
-    //    return Self::new_inner(path.as_ref());
-    //}
 
+    fn get_author_prefix(frontmatter: &Yaml) -> Option<String> {
+        if let Some(author) = frontmatter["authors"][0].as_str() {
+            if let Some(year) = frontmatter["year"].as_str() {
+                Some(format!("{} ({}) -", author, year))
+            } else {
+                Some(format!("{} -", author))
+            }; 
+        };
+        None
+    }
+
+
+    fn get_title(filename: &Path, frontmatter: Option<&Yaml>) -> String {
+        let base_title = match frontmatter
+            .and_then(
+                 |fm| fm["title"].as_str()
+            ) 
+            {
+                Some(title) => title, 
+                None => 
+                {
+                    filename.file_stem().and_then(|f| f.to_str()).unwrap_or("Note")
+                }
+            };
+        let prefix = frontmatter
+            .and_then(|fm| Self::get_author_prefix(fm))
+            .unwrap_or_else(|| String::from(""));
+        return prefix + base_title;
+    }
 
     pub fn new(path: &'a Path) -> Result<Self, std::io::Error> {
-        let content = Self::sanitize(&read_note_from_file(path)?);  
-        let links = Self::find_obsidian_links(&content); 
+        let content = Self::sanitize(&read_note_from_file(path)?);
+        let frontmatter = extract_yaml_frontmatter(&content)
+            .and_then(|fm| parse_frontmatter(&fm).ok());
+        let links = Self::find_obsidian_links(&content);
+        let title = Self::get_title(path, frontmatter.as_ref());
         Ok(Note{
-            path, links, content: None, title: None
+            path, links, content: None, title, frontmatter
         })
     }
         

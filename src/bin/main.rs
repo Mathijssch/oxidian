@@ -38,7 +38,7 @@ fn main() {
     let idx_path = Path::new(&args.dir); 
     let path = idx_path.join(INDEX_FILE);
     let note = create_note(path.to_str().unwrap());
-    println!("{:?}", note); 
+    println!("{:#?}", note); 
     //let index_note = read_index(&idx_path).unwrap(); 
     //let opts = Options::empty();
     //let html_string = note::parse_note(&index_note, opts); 
