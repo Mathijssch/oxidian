@@ -10,3 +10,4 @@ mod obs_links;
 mod html;
 mod utils;
 mod frontmatter;
+mod obs_placeholders;

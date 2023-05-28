@@ -1,49 +1,46 @@
+use std::fs::File;
+use std::io::{self, Error, Write};
 use std::path::Path;
 
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use super::link::Link;
-use super::{obs_admonitions, obs_comments, obs_links, frontmatter};
+use super::obs_placeholders::Sanitization;
+use super::utils::{markdown_to_html, read_lines, read_note_from_file};
+use super::{frontmatter, obs_admonitions, obs_comments, obs_links, obs_placeholders};
 use pulldown_cmark::{html, Event, Options, Parser, Tag};
-use serde::__private::de::Content;
 use yaml_rust::Yaml;
-use super::utils::read_note_from_file;
-
 
 #[derive(Debug)]
 pub struct Note<'a> {
-    pub path: &'a Path, 
+    pub path: &'a Path,
     pub links: Vec<Link>,
     pub frontmatter: Option<Yaml>,
-    content: Option<&'a str>,
-    title: String,  
+    content: String,
+    placeholders: Vec<Sanitization>,
+    title: String,
+    backlinks: Vec<String>,
 }
 
-impl<'a> Note<'a> { 
-
+impl<'a> Note<'a> {
     fn get_author_prefix(frontmatter: &Yaml) -> Option<String> {
         if let Some(author) = frontmatter["authors"][0].as_str() {
             if let Some(year) = frontmatter["year"].as_str() {
                 Some(format!("{} ({}) -", author, year))
             } else {
                 Some(format!("{} -", author))
-            }; 
+            };
         };
         None
     }
 
-
     fn get_title(filename: &Path, frontmatter: Option<&Yaml>) -> String {
-        let base_title = match frontmatter
-            .and_then(
-                 |fm| fm["title"].as_str()
-            ) 
-            {
-                Some(title) => title, 
-                None => 
-                {
-                    filename.file_stem().and_then(|f| f.to_str()).unwrap_or("Note")
-                }
-            };
+        let base_title = match frontmatter.and_then(|fm| fm["title"].as_str()) {
+            Some(title) => title,
+            None => filename
+                .file_stem()
+                .and_then(|f| f.to_str())
+                .unwrap_or("Note"),
+        };
         let prefix = frontmatter
             .and_then(|fm| Self::get_author_prefix(fm))
             .unwrap_or_else(|| String::from(""));
@@ -52,31 +49,70 @@ impl<'a> Note<'a> {
 
     pub fn new(path: &'a Path) -> Result<Self, std::io::Error> {
         let content = Self::sanitize(&read_note_from_file(path)?);
-        let frontmatter = extract_yaml_frontmatter(&content)
-            .and_then(|fm| parse_frontmatter(&fm).ok());
+        let frontmatter =
+            extract_yaml_frontmatter(&content).and_then(|fm| parse_frontmatter(&fm).ok());
+        let (content, placeholders) = Self::remove_protected_elems(content);
+        println!("Done!");
         let links = Self::find_obsidian_links(&content);
         let title = Self::get_title(path, frontmatter.as_ref());
-        Ok(Note{
-            path, links, content: None, title, frontmatter
+        Ok(Note {
+            path,
+            links,
+            content,
+            title,
+            frontmatter,
+            placeholders,
+            backlinks: vec![],
         })
     }
-        
+
     fn find_obsidian_links(content: &str) -> Vec<Link> {
-        obs_links::find_obsidian_links(content) 
+        obs_links::find_obsidian_links(content)
     }
 
-    fn sanitize(content: &str) -> String { 
+    fn remove_protected_elems(content: String) -> (String, Vec<Sanitization>) {
+        // Remove math elements
+        return obs_placeholders::disambiguate_protected(&content);
+    }
+
+    fn sanitize(content: &str) -> String {
         return format_admonitions(&strip_comments(content));
     }
 
+    pub fn to_html(&self, path: &Path) -> Result<(), Error> {
+        let file = File::create(path)?;
+        let mut writer = io::BufWriter::new(file);
 
+        // TODO: Parse this out.
+        let template_path = "template.html";
+        let mut content = self.content.to_owned();
+        for placeholder in &self.placeholders {
+           content = content.replace(&placeholder.get_placeholder(), &placeholder.0);
+        }
+        let html_content = markdown_to_html(&content);
+
+        read_lines(template_path)?
+            .map(|line| {
+                line.unwrap()
+                    .replace(r"{{content}}", &html_content)
+                    .replace("r{{backlinks}}", "")
+            })
+            .for_each(|line| {
+                writer.write_all(line.as_bytes()).unwrap();
+                writer.write_all(b"\n").unwrap();
+            });
+        Ok(())
+
+        //    let parser = pulldown_cmark::Parser::new(&stripped);
+        //    let mut html_output = String::new();
+        //    //html::push_html(
+        //    //&mut html_output,
+        //    //events.iter().map(|e| e.clone().to_owned()),
+        //    //);
+        //    html::push_html(&mut html_output, parser);
+        //    return html_output;
+    }
 }
-
-
-
-
-
-
 
 //Check if a sorted collection of delimiters is balanced.
 //fn is_balanced_sorted(delimiters: &Vec<Delimiter>) -> bool {
@@ -124,7 +160,6 @@ fn format_admonitions(note: &str) -> String {
     return output;
 }
 
-
 pub fn create_note(path: &str) -> Note {
     let the_path = Path::new(path);
     Note::new(the_path).unwrap()
@@ -135,15 +170,7 @@ pub fn create_note(path: &str) -> Note {
 //        //&format_admonitions(
 //            //&strip_comments(note)
 //            //)
-//        //); 
-//    let parser = pulldown_cmark::Parser::new(&stripped);
-//    let mut html_output = String::new();
-//    //html::push_html(
-//    //&mut html_output,
-//    //events.iter().map(|e| e.clone().to_owned()),
-//    //);
-//    html::push_html(&mut html_output, parser);
-//    return html_output;
+//        //);
 //}
 
 //let mut events: Vec<&Event>;
