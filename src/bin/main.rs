@@ -1,17 +1,17 @@
 extern crate oxidian;
 use clap::Parser;
 use oxidian::oxidianlib::{
-    errors::{self, IndexError},
+    errors,//::{self, IndexError},
     constants::INDEX_FILE, 
-    note::{self, create_note}   
+    note::create_note 
 };
-use pulldown_cmark::Options;
-use std::{path::Path, fs::File, io::{Read, Write}};
+use std::path::Path;
 
 type MissingDirectory<'a> = errors::MissingDirectoryError<&'a Path>; 
 type MissingIndex<'a> = errors::MissingIndexError<&'a Path>;
 type ExistingOutput<'a> = errors::DirExistsError<&'a Path>;
 type InitializeError<'a> = errors::InitializationError<&'a Path>;
+use std::time::Instant;
 
 // -------------------------------------------
 // CLI
@@ -35,11 +35,14 @@ fn main() {
     if let Err(e) = validate_args(&args){
         println!("{}", e);
     };
+    let start = Instant::now();
     let idx_path = Path::new(&args.dir); 
     let path = idx_path.join(INDEX_FILE);
     let note = create_note(path.to_str().unwrap());
     let out_path = Path::new(&args.out).join("index.html");
     note.to_html(&out_path).unwrap();
+    let duration = start.elapsed();
+    println!("Compiled notes in: {:?}", duration);
     //println!("{:#?}", note); 
     //let index_note = read_index(&idx_path).unwrap(); 
 
@@ -48,23 +51,23 @@ fn main() {
     //write_note(&out_path, &html_string);
 }
 
-fn write_note(path: &Path, content: &str) {
-    // Create the directories recursively if they don't exist
-    if let Some(parent_dir) = path.parent() {
-        std::fs::create_dir_all(parent_dir).expect("Could not create containing directory");
-    }
-    let mut file = File::create(path).expect("Could not create new file");
-    //let file = File::open(path).expect("Could not open file.");
-    file.write_all(content.as_bytes()).unwrap();
-}
+//fn write_note(path: &Path, content: &str) {
+//    // Create the directories recursively if they don't exist
+//    if let Some(parent_dir) = path.parent() {
+//        std::fs::create_dir_all(parent_dir).expect("Could not create containing directory");
+//    }
+//    let mut file = File::create(path).expect("Could not create new file");
+//    //let file = File::open(path).expect("Could not open file.");
+//    file.write_all(content.as_bytes()).unwrap();
+//}
 
-fn read_index(dir: &Path) -> Result<String, errors::IndexError> {
-    let path = dir.join(INDEX_FILE);
-    let mut file = File::open(path).map_err(|_| IndexError::IndexOpenError)?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).map_err(|_| IndexError::IndexReadError)?;
-    return Ok(contents);
-}
+//fn read_index(dir: &Path) -> Result<String, errors::IndexError> {
+//    let path = dir.join(INDEX_FILE);
+//    let mut file = File::open(path).map_err(|_| IndexError::IndexOpenError)?;
+//    let mut contents = String::new();
+//    file.read_to_string(&mut contents).map_err(|_| IndexError::IndexReadError)?;
+//    return Ok(contents);
+//}
 
 fn validate_args(args: &Args) -> Result<(), InitializeError>{
     let input_path = Path::new(&args.dir);

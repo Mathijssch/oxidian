@@ -11,3 +11,4 @@ mod html;
 mod utils;
 mod frontmatter;
 mod obs_placeholders;
+mod load_static;

@@ -5,11 +5,13 @@ use std::path::Path;
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use super::link::Link;
 use super::obs_placeholders::Sanitization;
-use super::utils::{markdown_to_html, read_lines, read_note_from_file};
-use super::{frontmatter, obs_admonitions, obs_comments, obs_links, obs_placeholders};
-use pulldown_cmark::{html, Event, Options, Parser, Tag};
+use super::utils::{markdown_to_html, read_note_from_file};
+use super::{obs_admonitions, obs_comments, obs_links, obs_placeholders};
+use pulldown_cmark::Event;
 use yaml_rust::Yaml;
+use super::load_static::HTML_TEMPLATE;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Note<'a> {
     pub path: &'a Path,
@@ -52,8 +54,8 @@ impl<'a> Note<'a> {
         let frontmatter =
             extract_yaml_frontmatter(&content).and_then(|fm| parse_frontmatter(&fm).ok());
         let (content, placeholders) = Self::remove_protected_elems(content);
-        println!("Done!");
         let links = Self::find_obsidian_links(&content);
+        println!("Found links {:?}", links);
         let title = Self::get_title(path, frontmatter.as_ref());
         Ok(Note {
             path,
@@ -83,59 +85,25 @@ impl<'a> Note<'a> {
         let file = File::create(path)?;
         let mut writer = io::BufWriter::new(file);
 
-        // TODO: Parse this out.
-        let template_path = "template.html";
         let mut content = self.content.to_owned();
         for placeholder in &self.placeholders {
            content = content.replace(&placeholder.get_placeholder(), &placeholder.0);
         }
         let html_content = markdown_to_html(&content);
 
-        read_lines(template_path)?
+        let template_content = HTML_TEMPLATE; 
+        
+        template_content.lines()
             .map(|line| {
-                line.unwrap()
-                    .replace(r"{{content}}", &html_content)
-                    .replace("r{{backlinks}}", "")
+                line.replace(r"{{content}}", &html_content)
             })
             .for_each(|line| {
                 writer.write_all(line.as_bytes()).unwrap();
                 writer.write_all(b"\n").unwrap();
             });
         Ok(())
-
-        //    let parser = pulldown_cmark::Parser::new(&stripped);
-        //    let mut html_output = String::new();
-        //    //html::push_html(
-        //    //&mut html_output,
-        //    //events.iter().map(|e| e.clone().to_owned()),
-        //    //);
-        //    html::push_html(&mut html_output, parser);
-        //    return html_output;
     }
 }
-
-//Check if a sorted collection of delimiters is balanced.
-//fn is_balanced_sorted(delimiters: &Vec<Delimiter>) -> bool {
-//    if delimiters.len() % 2 != 0 {
-//        return false;
-//    }
-
-//    let mut level = 0;
-//    for d in delimiters {
-//        match d {
-//            Delimiter::Begin(_) => {
-//                level += 1;
-//            }
-//            Delimiter::End(_) => {
-//                level -= 1;
-//            }
-//        }
-//        if level < 0 {
-//            return false;
-//        }
-//    }
-//    level == 0
-//}
 
 fn strip_comments(note: &str) -> String {
     let mut output = String::with_capacity(note.len());
@@ -165,71 +133,20 @@ pub fn create_note(path: &str) -> Note {
     Note::new(the_path).unwrap()
 }
 
-//pub fn parse_note(note: &str, opts: Options) -> String {
-//    //let stripped = format_obsidian_links(
-//        //&format_admonitions(
-//            //&strip_comments(note)
-//            //)
-//        //);
-//}
-
-//let mut events: Vec<&Event>;
-//if let Some(size) = parser.size_hint().1 {
-//    events = Vec::with_capacity(size);
-//} else {
-//    events = vec![];
-//}
-
-//let mut admonitions = obs_admonitions::ObsAdmonition::new();
-
-//for event in parser {
-//    admonitions.handle_event(event).for_each(|e| events.push(e));
-
-//if let Some(processed) = admonitions.handle_event(event)
-//    .and_then(|proc_events| events.iter()
-//              .map(|e| unity.handle_event(e))
-//              .flat_map(|optional_events| optional_events.ok_or(vec!()))
-//              .collect()
-//              )
-//{
-//    events.append(processed);
-//}
-//}
-//events.iter().for_each(print_text_event);
-//parser.for_each(|e| print_text_event(&e));
-//    let mut html_output = String::new();
-//    ////html::push_html(
-//    ////    &mut html_output,
-//    ////    events.iter().map(|e| e.clone().to_owned()),
-//    ////);
-//    //html::push_html(&mut html_output, parser);
-//    return html_output;
-//}
-
 pub fn print_text_event(e: &Event) {
     println!("{:?}", e);
-    //match e {
-    //    Event::Text(t) => println!("{}", t),
-    //    _ => {}
-    //}
 }
 
-//impl LaTeXEnv {
 
-//    fn new<T: Into<String>>(env_name: T) -> Self {
+#[cfg(test)]
+mod tests {
+    use super::Note;
 
-//        Self {
-//            env_name: env_name.into(),
-//            content: String::new()
-//        }
-//    }
+    #[test]
+    fn test_get_link_basic() { 
+        let test_string = "some html with\n[a new link] and some other\ncontent";
 
-//    fn start_pattern(&self) -> String {
-//        return format!("\\begin{{{}}}", self.env_name);
-//    }
 
-//    fn end_pattern(&self) -> String {
-//        return format!("\\end{{{}}}", self.env_name);
-//    }
+    }
+}
 
-//}
