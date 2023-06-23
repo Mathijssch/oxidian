@@ -1,10 +1,4 @@
 use std::{path::Path, fs::File};
-use std::fs;
-use super::constants::NOTE_EXT;
-use walkdir::{WalkDir, DirEntry};
-use std::io;
-//use std::io::{Read, self, BufRead};
-use std::path::PathBuf;
 use std::io::Read;
 
 use pulldown_cmark::html;
@@ -43,20 +37,3 @@ pub fn markdown_to_html(markdown: &str) -> String {
     return html_output;
 }
 
-
-pub fn filter_markdown_html_files(path: &str) -> impl Iterator<Item = io::Result<PathBuf>> {
-    //let entries = fs::read_dir(path).unwrap();
-    let entries = WalkDir::new(path).into_iter().filter_map(Result::ok);
-   
-    entries.filter_map(|entry| {
-        let path = entry.into_path();
-        let extension = path.extension()?.to_str()?.to_lowercase();
-        
-        let contains = NOTE_EXT.iter().any(|ext| **ext == extension);
-        if contains {
-            Some(Ok(path))
-        } else {
-            None
-        }
-    })
-}

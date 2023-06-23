@@ -6,7 +6,7 @@ use oxidian::oxidianlib::{
     note::create_note 
 };
 use std::path::Path;
-use oxidian::oxidianlib::utils::filter_markdown_html_files;
+use oxidian::oxidianlib::filesys::get_all_notes;
 
 type MissingDirectory<'a> = errors::MissingDirectoryError<&'a Path>; 
 type MissingIndex<'a> = errors::MissingIndexError<&'a Path>;
@@ -38,7 +38,7 @@ fn main() {
         println!("{}", e);
     };
     
-    for path in filter_markdown_html_files(&args.dir){
+    for path in get_all_notes(&args.dir){
         println!("{:?}", path.unwrap());
     }
 
