@@ -6,6 +6,7 @@ use oxidian::oxidianlib::{
     note::create_note 
 };
 use std::path::Path;
+use oxidian::oxidianlib::utils::filter_markdown_html_files;
 
 type MissingDirectory<'a> = errors::MissingDirectoryError<&'a Path>; 
 type MissingIndex<'a> = errors::MissingIndexError<&'a Path>;
@@ -30,19 +31,26 @@ struct Args {
     out: String,
 }
 
+
 fn main() {
     let args = Args::parse();
     if let Err(e) = validate_args(&args){
         println!("{}", e);
     };
-    let start = Instant::now();
-    let idx_path = Path::new(&args.dir); 
-    let path = idx_path.join(INDEX_FILE);
-    let note = create_note(path.to_str().unwrap());
-    let out_path = Path::new(&args.out).join("index.html");
-    note.to_html(&out_path).unwrap();
-    let duration = start.elapsed();
-    println!("Compiled notes in: {:?}", duration);
+    
+    for path in filter_markdown_html_files(&args.dir){
+        println!("{:?}", path.unwrap());
+    }
+
+
+    //let start = Instant::now();
+    //let idx_path = Path::new(&args.dir); 
+    //let path = idx_path.join(INDEX_FILE);
+    //let note = create_note(path.to_str().unwrap());
+    //let out_path = Path::new(&args.out).join("index.html");
+    //note.to_html(&out_path).unwrap();
+    //let duration = start.elapsed();
+    //println!("Compiled notes in: {:?}", duration);
     //println!("{:#?}", note); 
     //let index_note = read_index(&idx_path).unwrap(); 
 

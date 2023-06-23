@@ -8,7 +8,7 @@ mod obs_admonitions;
 mod obs_links;
 //mod obs_references; 
 mod html;
-mod utils;
+pub mod utils;
 mod frontmatter;
 mod obs_placeholders;
 mod load_static;

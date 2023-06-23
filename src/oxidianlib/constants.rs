@@ -2,6 +2,11 @@ pub const INDEX_FILE: &str = "index.md";
 
 pub const OBS_COMMENTS: &str = "%";
 
+pub const NOTE_EXT: [&str;2] = [
+    "md",
+    "html",
+];
+
 pub const IMG_EXT: [&str;8] = [
     "jpg",
     "jpeg",
