@@ -6,8 +6,8 @@ use thiserror::Error;
 pub struct DirExistsError<T: fmt::Debug>(pub T);
 
 #[derive(Error, Debug)]
-#[error("Missing an index file `{0:?}`.")]
-pub struct MissingIndexError<T: fmt::Debug>(pub T);
+#[error("Missing an index file named `{0:?}` in `{1:?}`.")]
+pub struct MissingIndexError<T: fmt::Debug>(pub T, pub T);
 
 #[derive(Error, Debug)]
 #[error("The directory `{0:?}` does not exist.")]
@@ -44,4 +44,12 @@ pub enum InvalidObsidianLink<T: fmt::Debug, U: fmt::Debug> {
 pub enum MathFindError<T: fmt::Debug> {
     #[error("Already in math mode. Cannot open a new math environment")]
     NestedMathMode(T),
+}
+
+#[derive(Error, Debug)]
+pub enum NotePathError<T: fmt::Debug> {
+    #[error("The given path to a Note {0:?} has an empty stem!")]
+    NoStem(T), 
+    #[error("The given path to a Note {0:?} cannot be represented as valid UTF-8!")]
+    InvalidUTF8(T)
 }
