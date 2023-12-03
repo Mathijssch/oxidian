@@ -2,7 +2,7 @@ use regex::Regex;
 
 lazy_static! {
 static ref OBSIDIAN_LINK_RE: Regex = 
-    Regex::new(r"(?P<is_attachment>!?)\[{2}(?P<link>.*?)\]{2}")
+    Regex::new(r"(?P<is_attachment>!?)\[{2}(?P<link>[^\[]*?)\]{2}")
 .unwrap();
 }
 use super::link::Link;
@@ -17,36 +17,50 @@ pub fn find_obsidian_links(content: &str) -> Vec<Link> {
 
 #[cfg(test)]
 mod tests {
-    use crate::oxidianlib::link::Link;
+    use crate::oxidianlib::link::{LinkType, Link, FileType};
 
     use super::find_obsidian_links;
 
-    fn test_single_link(content: &str, link: &str) {
+    fn test_multiple_links(content: &str, links: Vec<&str>) {
         let found_links = find_obsidian_links(content);
-        let true_link = Link::from_obsidian_link(link, false).unwrap();
-        assert_eq!(found_links.len(), 1);  
-        assert_eq!(found_links[0], true_link);
+        assert_eq!(found_links.len(), links.len());  
+        
+        for (found_link, given_link) in found_links.iter().zip(
+                links.iter().map(
+                    |link_str| Link::from_obsidian_link(link_str, false).unwrap())) {
+            assert_eq!(*found_link, given_link);
+        }
     }
-
 
     #[test]
     fn test_basic_link() {
-        test_single_link("some line with a simple [[link]] to another file.", "link");
+        test_multiple_links("some line with a simple [[link]] to another file.", vec!["link"]);
     }
 
     #[test]
     fn test_basic_link_spaces() {
-        test_single_link("some line with a simple [[ link ]] to another file.", " link ");
+        test_multiple_links("some line with a simple [[ link ]] to another file.", vec![" link "]);
     }
 
     #[test]
     fn test_basic_link_subpath() {
-        test_single_link("some line with a simple [[ link#header ]] to another file.", " link#header ");
+        test_multiple_links("some line with a simple [[ link#header ]] to another file.", vec![" link#header "]);
     }
 
     #[test]
     fn test_basic_link_alias() {
-        test_single_link("some line with a simple [[ link#header | alias ]] to another file.", " link#header | alias ");
+        test_multiple_links("some line with a simple [[ link#header | alias ]] to another file.", vec![" link#header | alias "]);
+    }
+
+    #[test]
+    fn test_double_link_with_false_positive() {
+        test_multiple_links("some line with a simple [[ link#header | alias ]] to another file. Here is another link [[ But this one is fake , and then a [[real_link]]", vec![" link#header | alias ", "real_link"]);
+    }
+    #[test]
+    fn test_basic_link_attachment() {
+        let found_links = find_obsidian_links("A line with an ![[attachment.png]]");
+        assert_eq!(found_links.len(), 1);
+        assert_eq!(found_links[0].link_type(), LinkType::Attachment(FileType::Image));
     }
     // More tests...
 }
