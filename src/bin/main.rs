@@ -3,16 +3,15 @@ use clap::Parser;
 use oxidian::oxidianlib::{
     errors,//::{self, IndexError},
     constants::INDEX_FILE, 
-    note::create_note 
 };
 use std::path::Path;
 use oxidian::oxidianlib::filesys::get_all_notes;
+use oxidian::oxidianlib::note;
 
 type MissingDirectory<'a> = errors::MissingDirectoryError<&'a Path>; 
 type MissingIndex<'a> = errors::MissingIndexError<&'a Path>;
 type ExistingOutput<'a> = errors::DirExistsError<&'a Path>;
 type InitializeError<'a> = errors::InitializationError<&'a Path>;
-use std::time::Instant;
 
 // -------------------------------------------
 // CLI
@@ -37,10 +36,22 @@ fn main() {
     if let Err(e) = validate_args(&args){
         println!("{}", e);
     };
+
+    let all_paths = get_all_notes(&args.dir);
+
+    //let mut notes = Vec::new();
+    //for path in all_paths {
+        //notes.push(note::Note::new(&path.unwrap()));
+    //}
+
+
+
+
+
     
-    for path in get_all_notes(&args.dir){
-        println!("{:?}", path.unwrap());
-    }
+    //for path in get_all_notes(&args.dir){
+    //    println!("{:?}", path.unwrap());
+    //}
 
 
     //let start = Instant::now();
