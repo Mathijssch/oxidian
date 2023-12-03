@@ -6,7 +6,7 @@ use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use super::link::Link;
 use super::obs_placeholders::Sanitization;
 use super::utils::{markdown_to_html, read_note_from_file};
-use super::{obs_admonitions, obs_comments, obs_links, obs_placeholders};
+use super::{obs_admonitions, obs_comments, obs_links, obs_placeholders, formatting};
 use pulldown_cmark::Event;
 use yaml_rust::Yaml;
 use super::load_static::HTML_TEMPLATE;
@@ -33,6 +33,14 @@ impl<'a> Note<'a> {
             };
         };
         None
+    }
+
+    fn format_links(&self, content: &mut String) {
+        // TODO THIS DOES NOT WORK!
+        for link in self.links {
+
+            content = content.replace(link.source_string, & formatting::link_to_md(&link))
+        }
     }
 
     fn get_title(filename: &Path, frontmatter: Option<&Yaml>) -> String {
@@ -92,9 +100,8 @@ impl<'a> Note<'a> {
         for placeholder in &self.placeholders {
            content = content.replace(&placeholder.get_placeholder(), &placeholder.0);
         }
-        //content = self.format_links()
+        content = self.format_links(content)
         
-
         let html_content = markdown_to_html(&content);
 
         let template_content = HTML_TEMPLATE; 
@@ -134,13 +141,14 @@ fn format_admonitions(note: &str) -> String {
     return output;
 }
 
+
 pub fn create_note(path: &str) -> Note {
     let the_path = Path::new(path);
     Note::new(the_path).unwrap()
 }
 
-pub fn print_text_event(e: &Event) {
-    println!("{:?}", e);
-}
+//pub fn print_text_event(e: &Event) {
+//    println!("{:?}", e);
+//}
 
 

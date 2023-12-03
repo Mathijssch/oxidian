@@ -14,7 +14,7 @@ pub struct Link {
     pub target: PathBuf,
     pub subtarget: Option<String>,
     pub alias: Option<String>,
-    source_string: String,
+    pub source_string: String,
     is_attachment: bool,
 }
 
