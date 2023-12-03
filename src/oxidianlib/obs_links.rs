@@ -14,7 +14,6 @@ pub fn find_obsidian_links(content: &str) -> Vec<Link> {
         .collect()
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::oxidianlib::link::{LinkType, Link, FileType};

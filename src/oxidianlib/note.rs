@@ -77,10 +77,13 @@ impl<'a> Note<'a> {
         return obs_placeholders::disambiguate_protected(&content);
     }
 
+
+
     fn sanitize(content: &str) -> String {
         return format_admonitions(&strip_comments(content));
     }
 
+    ///Export the current note to a html file at the specified path.
     pub fn to_html(&self, path: &Path) -> Result<(), Error> {
         let file = File::create(path)?;
         let mut writer = io::BufWriter::new(file);
@@ -89,6 +92,9 @@ impl<'a> Note<'a> {
         for placeholder in &self.placeholders {
            content = content.replace(&placeholder.get_placeholder(), &placeholder.0);
         }
+        //content = self.format_links()
+        
+
         let html_content = markdown_to_html(&content);
 
         let template_content = HTML_TEMPLATE; 

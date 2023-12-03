@@ -1,14 +1,16 @@
 extern crate oxidian;
-use clap::Parser;
-use oxidian::oxidianlib::{
-    errors,//::{self, IndexError},
-    constants::INDEX_FILE, 
-};
-use std::path::Path;
-use oxidian::oxidianlib::filesys::get_all_notes;
+use clap::{Parser, Subcommand};
+use oxidian::oxidianlib::filesys::{get_all_notes, convert_path};
 use oxidian::oxidianlib::note;
+use oxidian::oxidianlib::{
+    constants::INDEX_FILE,
+    errors, //::{self, IndexError},
+};
 
-type MissingDirectory<'a> = errors::MissingDirectoryError<&'a Path>; 
+use std::path::Path;
+use std::path::PathBuf;
+
+type MissingDirectory<'a> = errors::MissingDirectoryError<&'a Path>;
 type MissingIndex<'a> = errors::MissingIndexError<&'a Path>;
 type ExistingOutput<'a> = errors::DirExistsError<&'a Path>;
 type InitializeError<'a> = errors::InitializationError<&'a Path>;
@@ -16,58 +18,107 @@ type InitializeError<'a> = errors::InitializationError<&'a Path>;
 // -------------------------------------------
 // CLI
 // -------------------------------------------
+//
 
-/// Compile the notes in a given directory into a static website.
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// The directory containing the notes
-    #[arg(short, long)]
-    dir: String,
-
-    /// The output directory
-    #[arg(short, long)]
-    out: String,
+#[derive(Debug, Parser)] // requires `derive` feature
+#[command(name = "oxidian")]
+#[command(about = "Tools for Obsidian-style markdown notes.", long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
 }
 
+#[derive(Debug, Subcommand)]
+enum Commands {
+    /// Builds the webpage
+    #[command(arg_required_else_help = true)]
+    Build {
+        /// The directory containing the notes
+        #[arg(short, long)]
+        dir: String,
+
+        /// The output directory
+        #[arg(short, long)]
+        out: String,
+
+        /// Path to the index file
+        #[arg(short, long)]
+        index_path: Option<String>,
+    },
+    /// Launches a server
+    #[command()]
+    Serve {
+        #[arg(short, long)]
+        port: Option<u32>,
+    },
+}
+
+fn serve( port: u32 ){
+    println!("Serving on port {}", port);
+}
 
 fn main() {
-    let args = Args::parse();
-    if let Err(e) = validate_args(&args){
-        println!("{}", e);
-    };
+    let args = Cli::parse();
 
-    let all_paths = get_all_notes(&args.dir);
+    match args.command {
+        Commands::Build {
+            dir,
+            out,
+            index_path,
+        } => { 
+            let index = index_path.unwrap_or(INDEX_FILE.to_owned());
+            let index_path = Path::new(&index);
+            let dir = Path::new(&dir);
+            let out = Path::new(&out);
+            build_vault(dir, out, index_path)
+        }
+        Commands::Serve { port } => { 
+            let port_nb = port.unwrap_or(8080);
+            serve(port_nb) ;
+        },
+    }
 
     //let mut notes = Vec::new();
     //for path in all_paths {
-        //notes.push(note::Note::new(&path.unwrap()));
+    //notes.push(note::Note::new(&path.unwrap()));
     //}
 
-
-
-
-
-    
     //for path in get_all_notes(&args.dir){
     //    println!("{:?}", path.unwrap());
     //}
 
-
     //let start = Instant::now();
-    //let idx_path = Path::new(&args.dir); 
+    //let idx_path = Path::new(&args.dir);
     //let path = idx_path.join(INDEX_FILE);
     //let note = create_note(path.to_str().unwrap());
     //let out_path = Path::new(&args.out).join("index.html");
     //note.to_html(&out_path).unwrap();
     //let duration = start.elapsed();
     //println!("Compiled notes in: {:?}", duration);
-    //println!("{:#?}", note); 
-    //let index_note = read_index(&idx_path).unwrap(); 
+    //println!("{:#?}", note);
+    //let index_note = read_index(&idx_path).unwrap();
 
     //let opts = Options::empty();
-    //let html_string = note::parse_note(&index_note, opts); 
+    //let html_string = note::parse_note(&index_note, opts);
     //write_note(&out_path, &html_string);
+}
+
+
+fn build_vault(input_dir: &Path, output_dir: &Path, index_file: &Path) { 
+
+    if let Err(e) = validate_build_args(&input_dir, &output_dir, &index_file) {
+        println!("{}", e);
+    };
+
+    let all_paths = get_all_notes(input_dir);
+
+    for note_path in all_paths {
+        let path = note_path.unwrap();
+        let note = note::Note::new(&path).unwrap();
+        let output_path = convert_path(&path).expect("Could not convert the note path to a valid HTML path.");
+        note.to_html(&output_path);
+    }
+
 }
 
 //fn write_note(path: &Path, content: &str) {
@@ -88,18 +139,12 @@ fn main() {
 //    return Ok(contents);
 //}
 
-fn validate_args(args: &Args) -> Result<(), InitializeError>{
-    let input_path = Path::new(&args.dir);
-    check_exists(input_path).map_err(
-        |e| errors::InitializationError::<&Path>::MissingDirectory(e)
-    )?;
-    check_contains_index(input_path).map_err(
-        |e| errors::InitializationError::<&Path>::MissingIndexError(e)
-    )?;
-    let output_path = Path::new(&args.out);
-    check_output_available(output_path).map_err(
-        |e| errors::InitializationError::<&Path>::OutputDirExists(e)
-    )?;
+fn validate_build_args<'a>(input_dir: &'a Path, output_dir: &'a Path, index_file: &'a Path) -> Result<(), InitializeError<'a>> {
+    check_exists(input_dir)
+        .map_err(|e| errors::InitializationError::<&Path>::MissingDirectory(e))?;
+    check_output_available(output_dir)
+        .map_err(|e| errors::InitializationError::<&Path>::OutputDirExists(e))?;
+    check_contains_index(&input_dir, &index_file)?;
     Ok(())
 }
 
@@ -110,10 +155,10 @@ fn check_exists(input_path: &Path) -> Result<(), MissingDirectory> {
     Ok(())
 }
 
-fn check_contains_index(input_path: &Path) -> Result<(), MissingIndex> {
-    if !input_path.join(Path::new(INDEX_FILE)).exists() {
-       return Err(errors::MissingIndexError(input_path)); 
-    } 
+fn check_contains_index<'a> (input_path: &'a Path, index_file: &'a Path) -> Result<(), MissingIndex<'a>> {
+    if !input_path.join(index_file).exists() {
+        return Err(errors::MissingIndexError(input_path, index_file));
+    }
     Ok(())
 }
 
