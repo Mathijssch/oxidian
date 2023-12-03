@@ -1,12 +1,12 @@
-use super::constants::NOTE_EXT;
+use super::{constants::NOTE_EXT, errors::NotePathError};
 use std::io;
-use std::path::PathBuf;
+use slugify::slugify;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 ///Functions to interact with the file system
 
 ///Return an iterator over notes in the given directory.
-pub fn get_all_notes(path: &str) -> impl Iterator<Item = io::Result<PathBuf>> {
-    //let entries = fs::read_dir(path).unwrap();
+pub fn get_all_notes(path: &Path) -> impl Iterator<Item = io::Result<PathBuf>> {
     let entries = WalkDir::new(path).into_iter().filter_map(Result::ok);
 
     entries.filter_map(|entry| {
@@ -21,6 +21,24 @@ pub fn get_all_notes(path: &str) -> impl Iterator<Item = io::Result<PathBuf>> {
         }
     })
 }
+
+
+/// Convert the path to a markdown file to a slugified version of the path with the html extension. 
+pub fn convert_path<'a> (path: &'a Path) -> Result<PathBuf, NotePathError<&'a Path>> {
+    //let extension = path.extension().ok_or_else(err)
+    let stem = path.file_stem().ok_or_else(| | NotePathError::NoStem(path))?
+        .to_str()
+        .ok_or_else(|| NotePathError::InvalidUTF8(path))?;
+
+    let slug = slugify!(stem);
+    if let Some(directory) = path.parent() {
+        let output_path = directory.join(slug).to_path_buf();
+        return Ok(output_path);
+    }
+    Ok(PathBuf::from(slug))
+}
+
+
 
 /// Unit tests
 #[cfg(test)]
@@ -84,7 +102,7 @@ mod tests {
     fn run_test(test_case: TestCase) {
         let dir_path = test_case.dir.path();
         // Call the filter_markdown_html_files function
-        let result: Vec<_> = get_all_notes(dir_path.to_str().unwrap())
+        let result: Vec<_> = get_all_notes(dir_path)
             .map(|entry| entry.map(|path| path.file_name().unwrap().to_owned()))
             .collect::<Result<_, _>>()
             .expect("Failed to filter files");

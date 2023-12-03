@@ -8,6 +8,7 @@ mod obs_comments;
 mod obs_admonitions; 
 mod obs_links;
 //mod obs_references; 
+mod formatting;
 mod html;
 mod utils;
 mod frontmatter;
