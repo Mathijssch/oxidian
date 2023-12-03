@@ -4,7 +4,7 @@ use regex::Regex;
 
 lazy_static! {
     static ref OBSIDIAN_NOTE_LINK_RE: Regex =
-        Regex::new(r"^(?P<file>[^#|]+)??(#(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
+        Regex::new(r"^(?P<file>[^#\^|]+)??([\^#](?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
 }
 
 use super::errors;
@@ -132,7 +132,7 @@ impl Link {
 
 #[cfg(test)]
 mod tests {
-    use super::Link;
+    use super::{Link, LinkType};
     use std::{path::PathBuf, assert_eq};
 
     #[test]
@@ -149,6 +149,35 @@ mod tests {
         assert_eq!(expected_link, got_link);
     }
 
+    #[test]
+    fn test_from_obsidian_blockref() {
+        let test_string = "link_to_note^someblock"; 
+        let expected_link = Link {
+            target: PathBuf::from("link_to_note"), 
+            subtarget: Some(String::from("someblock")),
+            alias: None,
+            is_attachment: false, 
+            source_string: test_string.to_string()
+        };
+        let got_link = Link::from_obsidian_link(test_string, false).unwrap();
+        assert_eq!(expected_link, got_link);
+        assert_eq!(got_link.link_type(), LinkType::Note)
+    }
+
+    #[test]
+    fn test_from_obsidian_header() {
+        let test_string = "link_to_note#someblock"; 
+        let expected_link = Link {
+            target: PathBuf::from("link_to_note"), 
+            subtarget: Some(String::from("someblock")),
+            alias: None,
+            is_attachment: false, 
+            source_string: test_string.to_string()
+        };
+        let got_link = Link::from_obsidian_link(test_string, false).unwrap();
+        assert_eq!(expected_link, got_link);
+        assert_eq!(got_link.link_type(), LinkType::Note)
+    }
     #[test]
     fn test_from_obsidian_with_spaces() {
         let test_string = "link to note"; 
