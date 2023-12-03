@@ -18,6 +18,7 @@ pub struct Link {
     is_attachment: bool,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum LinkType {
     External,
     Note,
@@ -25,6 +26,7 @@ pub enum LinkType {
     Attachment(FileType),
 }
 
+#[derive(Debug, PartialEq)]
 pub enum FileType {
     Pdf,
     Image,
@@ -33,19 +35,20 @@ pub enum FileType {
     Misc,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum InternalType {
     Header,
     Blockref,
 }
 
-type InvalidLink = errors::InvalidObsidianLink<String, String>;
+//type InvalidLink = errors::InvalidObsidianLink<String, String>;
 
 // TODO -- make smaller by using references.
-struct Capture {
-    file: String,
-    internal_ref: Option<String>,
-    alias: Option<String>,
-}
+//struct Capture {
+//    file: String,
+//    internal_ref: Option<String>,
+//    alias: Option<String>,
+//}
 
 fn attachment_type_from_file(file: &Path) -> FileType {
     let ext_own = match file.extension() {
