@@ -138,15 +138,3 @@ pub fn print_text_event(e: &Event) {
 }
 
 
-#[cfg(test)]
-mod tests {
-    use super::Note;
-
-    #[test]
-    fn test_get_link_basic() { 
-        let test_string = "some html with\n[a new link] and some other\ncontent";
-
-
-    }
-}
-
