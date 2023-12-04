@@ -49,6 +49,13 @@ impl<'a> Note<'a> {
         return prefix + base_title;
     }
 
+    fn process_links(&self, mut content: String) -> String {
+        for link in &self.links {
+            content = content.replace(&link.source_string, &formatting::link_to_md(link));
+        }
+        return content;
+    }
+
     pub fn new(path: &'a Path) -> Result<Self, std::io::Error> {
         let content = Self::sanitize(&read_note_from_file(path)?);
         let frontmatter =
@@ -95,9 +102,8 @@ impl<'a> Note<'a> {
            content = content.replace(&placeholder.get_placeholder(), &placeholder.0);
         }
 
-        for link in &self.links {
-            content = content.replace(&link.source_string, &formatting::link_to_md(link));
-        }
+        content = self.process_links(content);
+
  
         let html_content = markdown_to_html(&content);
 
