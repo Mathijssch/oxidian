@@ -15,7 +15,7 @@ pub struct Link {
     pub subtarget: Option<String>,
     pub alias: Option<String>,
     pub source_string: String,
-    is_attachment: bool,
+    pub is_attachment: bool,
 }
 
 #[derive(Debug, PartialEq)]
