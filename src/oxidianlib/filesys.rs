@@ -45,13 +45,23 @@ pub fn get_all_notes(path: &Path) -> impl Iterator<Item = io::Result<PathBuf>> {
 
 
 /// Convert the path to a markdown file to a slugified version of the path with the html extension. 
-pub fn convert_path<'a> (path: &'a Path) -> Result<PathBuf, NotePathError<&'a Path>> {
+pub fn convert_path<'a> (path: &'a Path, extension: Option<&str>) -> Result<PathBuf, NotePathError<&'a Path>> {
+    let ext = match extension {
+        Some(e) => Some(OsStr::new(e)),
+        None => {path.extension()}
+    };
     //let extension = path.extension().ok_or_else(err)
     let stem = path.file_stem().ok_or_else(| | NotePathError::NoStem(path))?
         .to_str()
         .ok_or_else(|| NotePathError::InvalidUTF8(path))?;
 
-    let slug = slugify!(stem);
+    let mut slug = slugify!(stem);
+    
+    if let Some(ext) = ext {
+        slug.push_str(".");
+        slug.push_str(&ext.to_string_lossy());
+    }
+
     if let Some(directory) = path.parent() {
         let output_path = directory.join(slug).to_path_buf();
         return Ok(output_path);
