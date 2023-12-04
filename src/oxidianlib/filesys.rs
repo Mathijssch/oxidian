@@ -44,7 +44,10 @@ pub fn get_all_notes(path: &Path) -> impl Iterator<Item = io::Result<PathBuf>> {
 }
 
 
-/// Convert the path to a markdown file to a slugified version of the path with the html extension. 
+/// Convert the path to a markdown file to a slugified version of the path with either
+/// * The given extension, 
+/// * The original extension
+///
 pub fn convert_path<'a> (path: &'a Path, extension: Option<&str>) -> Result<PathBuf, NotePathError<&'a Path>> {
     let ext = match extension {
         Some(e) => Some(OsStr::new(e)),
@@ -68,7 +71,6 @@ pub fn convert_path<'a> (path: &'a Path, extension: Option<&str>) -> Result<Path
     }
     Ok(PathBuf::from(slug))
 }
-
 
 
 /// Unit tests
