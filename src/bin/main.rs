@@ -8,7 +8,7 @@ use oxidian::oxidianlib::{
 };
 
 use std::time::Instant;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 type MissingDirectory<'a> = errors::MissingDirectoryError<&'a Path>;
 type MissingIndex<'a> = errors::MissingIndexError<&'a Path>;
@@ -105,7 +105,6 @@ fn main() {
 
 
 fn build_vault(input_dir: &Path, output_dir: &Path, index_file: &Path) { 
-
     let start = Instant::now();
     if let Err(e) = validate_build_args(&input_dir, &output_dir, &index_file) {
         println!("{}", e);
@@ -118,7 +117,7 @@ fn build_vault(input_dir: &Path, output_dir: &Path, index_file: &Path) {
         println!("Processing note {:?}", path);
         let note = note::Note::new(&path).unwrap();
         let output_file = convert_path(&path, Some("html")).expect("Could not convert the note path to a valid HTML path.");
-        println!("First: {:?}", output_file);
+        println!("First: {:?}", output_file); 
         let relative_path = output_file.strip_prefix(input_dir).unwrap();
         println!("After stripping: {:?}", relative_path);
         let output_path = output_dir.join(relative_path);
@@ -127,7 +126,6 @@ fn build_vault(input_dir: &Path, output_dir: &Path, index_file: &Path) {
     }
     let duration = start.elapsed();
     println!("Compiled notes in: {:?}", duration);
-
 }
 
 //fn write_note(path: &Path, content: &str) {

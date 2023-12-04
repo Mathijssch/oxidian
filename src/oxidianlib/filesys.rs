@@ -1,5 +1,5 @@
 use super::{constants::NOTE_EXT, errors::NotePathError};
-use std::{io, fs, ffi::{OsStr, OsString}};
+use std::{io, fs, ffi::OsStr};
 use slugify::slugify;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
