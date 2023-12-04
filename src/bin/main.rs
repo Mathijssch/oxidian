@@ -103,6 +103,29 @@ fn main() {
     //write_note(&out_path, &html_string);
 }
 
+fn compile_note(path: &Path, input_dir: &Path, output_dir: &Path) {
+    println!("Processing note {:?}", path);
+    let note = note::Note::new(&path).unwrap();
+    let output_file = convert_path(&path, Some("html")).expect("Could not convert the note path to a valid HTML path.");
+    println!("First: {:?}", output_file); 
+    let relative_path = output_file.strip_prefix(input_dir).unwrap();
+    println!("After stripping: {:?}", relative_path);
+    let output_path = output_dir.join(relative_path);
+    println!("exporting to {:?}", output_path);
+    note.to_html(&output_path).expect("Failed to export note");
+}
+
+fn compile_all(input_dir: &Path, output_dir: &Path) {
+
+    let all_paths = get_all_notes(input_dir);
+
+    for note_path in all_paths {
+        if let Ok(path) = note_path {
+            compile_note(&path, input_dir, output_dir);
+        }
+    }
+}
+
 
 fn build_vault(input_dir: &Path, output_dir: &Path, index_file: &Path) { 
     let start = Instant::now();
@@ -110,20 +133,7 @@ fn build_vault(input_dir: &Path, output_dir: &Path, index_file: &Path) {
         println!("{}", e);
     };
 
-    let all_paths = get_all_notes(input_dir);
-
-    for note_path in all_paths {
-        let path = note_path.unwrap();
-        println!("Processing note {:?}", path);
-        let note = note::Note::new(&path).unwrap();
-        let output_file = convert_path(&path, Some("html")).expect("Could not convert the note path to a valid HTML path.");
-        println!("First: {:?}", output_file); 
-        let relative_path = output_file.strip_prefix(input_dir).unwrap();
-        println!("After stripping: {:?}", relative_path);
-        let output_path = output_dir.join(relative_path);
-        println!("exporting to {:?}", output_path);
-        note.to_html(&output_path).expect("Failed to export note");
-    }
+    compile_all(input_dir, output_dir);
     let duration = start.elapsed();
     println!("Compiled notes in: {:?}", duration);
 }
