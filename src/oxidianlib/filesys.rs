@@ -1,9 +1,30 @@
 use super::{constants::NOTE_EXT, errors::NotePathError};
-use std::io;
+use std::{io, fs, ffi::{OsStr, OsString}};
 use slugify::slugify;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 ///Functions to interact with the file system
+
+/// Create directory if it doesn't exist yet.
+pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
+    //let path = std::path::Path::new(dir_path);
+    //
+    if !path.exists() {
+        match fs::create_dir(path) {
+            Ok(_) => {
+                println!("Directory '{:?}' created successfully.", path);
+                Ok(())
+            }
+            Err(err) => {
+                eprintln!("Error creating directory '{:?}': {:?}", path, err);
+                Err(err)
+            }
+        }
+    } else {
+        println!("Directory '{:?}' already exists.", path);
+        Ok(())
+    }
+}
 
 ///Return an iterator over notes in the given directory.
 pub fn get_all_notes(path: &Path) -> impl Iterator<Item = io::Result<PathBuf>> {
