@@ -2,6 +2,7 @@ use super::html;
 use super::link::{Link, LinkType, FileType};
 use super::filesys::convert_path;
 use std::path::Path;
+use super::utils::prepend_slash;
 
 fn md_link(text: &str, target: &str) -> String {
     format!("[{}]({})", text, target).to_string()
@@ -18,17 +19,20 @@ pub fn link_to_md(link: &Link) -> String {
     match link.link_type() {
         LinkType::Note => {
             // Link to note should point to html page.
-            let mut target = convert_path(&Path::new(&link.target), Some("html")).unwrap()
+            let target_rel = convert_path(&Path::new(&link.target), Some("html")).unwrap();
+            let mut target_abs = prepend_slash(&target_rel)
                 .to_string_lossy()
                 .to_string();
             if let Some(subtarget) = &link.subtarget {
-                target = format!("{}#{}", target, subtarget);
+                target_abs.push_str("#");
+                target_abs.push_str(subtarget);
             }
-            return md_link(&link_text, &target);
+            return md_link(&link_text, &target_abs);
         },
         LinkType::External => {return md_link(&link_text, &link_target_str);},
         LinkType::Attachment(filetype) => {
-            let target_file = convert_path(&link.target, None).unwrap()
+            let target_rel = convert_path(&link.target, None).unwrap();
+            let target_file = prepend_slash(&target_rel)
                 .to_string_lossy()
                 .to_string();
             match filetype {

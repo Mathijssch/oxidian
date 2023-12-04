@@ -144,7 +144,7 @@ mod tests {
             subtarget: None,
             alias: None,
             is_attachment: false, 
-            source_string: test_string.to_string()
+            source_string: format!("[[{}]]", test_string).to_string()
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -158,7 +158,8 @@ mod tests {
             subtarget: Some(String::from("someblock")),
             alias: None,
             is_attachment: false, 
-            source_string: test_string.to_string()
+            source_string: format!("[[{}]]", test_string).to_string()
+
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -173,7 +174,7 @@ mod tests {
             subtarget: Some(String::from("someblock")),
             alias: None,
             is_attachment: false, 
-            source_string: test_string.to_string()
+            source_string: format!("[[{}]]", test_string).to_string()
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -187,7 +188,7 @@ mod tests {
             subtarget: None,
             alias: None,
             is_attachment: false, 
-            source_string: test_string.to_string()
+            source_string: format!("[[{}]]", test_string).to_string()
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -201,7 +202,7 @@ mod tests {
             subtarget: None,
             alias: None,
             is_attachment: false, 
-            source_string: test_string.to_string()
+            source_string: format!("[[{}]]", test_string).to_string()
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -215,7 +216,7 @@ mod tests {
             subtarget: None,
             alias: None,
             is_attachment: false, 
-            source_string: test_string.to_string()
+            source_string: format!("[[{}]]", test_string).to_string()
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -229,7 +230,7 @@ mod tests {
             subtarget: None,
             alias: Some("the note I want to mention".to_string()),
             is_attachment: false, 
-            source_string: test_string.to_string()
+            source_string: format!("[[{}]]", test_string).to_string()
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -242,7 +243,7 @@ mod tests {
             subtarget: Some("header1".to_string()),
             alias: Some("the note I want to mention".to_string()),
             is_attachment: false, 
-            source_string: test_string.to_string()
+            source_string: format!("[[{}]]", test_string).to_string()
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);

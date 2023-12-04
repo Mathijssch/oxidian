@@ -1,4 +1,4 @@
-use std::{path::Path, fs::File};
+use std::{path::{Path, PathBuf}, fs::File};
 use std::io::Read;
 
 use pulldown_cmark::html;
@@ -37,3 +37,9 @@ pub fn markdown_to_html(markdown: &str) -> String {
     return html_output;
 }
 
+
+// Prepend a slash in front of a path, making it absolute.
+pub fn prepend_slash(path: &Path) -> PathBuf {
+    let slash = Path::new("/");
+    slash.join(&path)
+}
