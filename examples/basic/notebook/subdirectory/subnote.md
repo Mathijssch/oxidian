@@ -1,3 +1,3 @@
-# Heading 1 
+# Note in subfolder
 
-One line of text.
+Here is a note, which links back to [[index]]
