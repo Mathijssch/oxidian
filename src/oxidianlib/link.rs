@@ -119,12 +119,13 @@ impl Link {
         let subtarget = captures.name("section").map(|v| v.as_str().to_string())
             .and_then(|name| Some(name.trim().to_owned()));
 
+        let source_str = format!("[[{}]]", obs_link).to_string();
         Ok(Link {
             target: PathBuf::from(target),
             subtarget,
             alias,
             is_attachment,
-            source_string: obs_link.to_string(),
+            source_string: source_str,
         })
     }
 }

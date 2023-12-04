@@ -2,12 +2,12 @@ use std::fs::File;
 use std::io::{self, Error, Write};
 use std::path::Path;
 
+use super::filesys;
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use super::link::Link;
 use super::obs_placeholders::Sanitization;
 use super::utils::{markdown_to_html, read_note_from_file};
 use super::{obs_admonitions, obs_comments, obs_links, obs_placeholders, formatting};
-use pulldown_cmark::Event;
 use yaml_rust::Yaml;
 use super::load_static::HTML_TEMPLATE;
 
@@ -35,14 +35,6 @@ impl<'a> Note<'a> {
         None
     }
 
-    fn format_links(&self, content: &mut String) {
-        // TODO THIS DOES NOT WORK!
-        for link in self.links {
-
-            content = content.replace(link.source_string, & formatting::link_to_md(&link))
-        }
-    }
-
     fn get_title(filename: &Path, frontmatter: Option<&Yaml>) -> String {
         let base_title = match frontmatter.and_then(|fm| fm["title"].as_str()) {
             Some(title) => title,
@@ -63,7 +55,6 @@ impl<'a> Note<'a> {
             extract_yaml_frontmatter(&content).and_then(|fm| parse_frontmatter(&fm).ok());
         let (content, placeholders) = Self::remove_protected_elems(content);
         let links = Self::find_obsidian_links(&content);
-        println!("Found links {:?}", links);
         let title = Self::get_title(path, frontmatter.as_ref());
         Ok(Note {
             path,
@@ -93,6 +84,9 @@ impl<'a> Note<'a> {
 
     ///Export the current note to a html file at the specified path.
     pub fn to_html(&self, path: &Path) -> Result<(), Error> {
+        if let Some(parent_dir) = path.parent() {
+            filesys::create_dir_if_not_exists(&parent_dir).unwrap();
+        }
         let file = File::create(path)?;
         let mut writer = io::BufWriter::new(file);
 
@@ -100,8 +94,11 @@ impl<'a> Note<'a> {
         for placeholder in &self.placeholders {
            content = content.replace(&placeholder.get_placeholder(), &placeholder.0);
         }
-        content = self.format_links(content)
-        
+
+        for link in &self.links {
+            content = content.replace(&link.source_string, &formatting::link_to_md(link));
+        }
+ 
         let html_content = markdown_to_html(&content);
 
         let template_content = HTML_TEMPLATE; 
