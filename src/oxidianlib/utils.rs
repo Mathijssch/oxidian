@@ -23,6 +23,11 @@ pub fn read_note_from_file<T: AsRef<Path>>(path: T) -> Result<String, std::io::E
     Ok(contents) 
 }
 
+pub fn move_to(path: &Path, original: &Path, new_ref: &Path) -> Result<PathBuf, std::path::StripPrefixError> {
+    let relative_path = path.strip_prefix(original)?;
+    Ok(new_ref.join(relative_path))
+}
+
 //pub fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 //where P: AsRef<Path>, {
 //    let file = File::open(filename)?;
