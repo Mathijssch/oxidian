@@ -7,7 +7,7 @@ lazy_static! {
         Regex::new(r"^(?P<file>[^#\^|]+)??([\^#](?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
 }
 
-use super::errors;
+use super::{errors, note::Note};
 
 #[derive(Debug,PartialEq)]
 pub struct Link {
@@ -128,6 +128,20 @@ impl Link {
             source_string: source_str,
         })
     }
+}
+
+impl<'a> From<Note<'a>> for Link {
+
+    fn from(note: Note<'a>) -> Self {
+        Link {
+            target: note.path.clone(),
+            subtarget: None, 
+            alias: Some(note.title), 
+            source_string: "".to_string(), 
+            is_attachment: false
+        }
+    }
+
 }
 
 

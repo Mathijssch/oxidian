@@ -3,7 +3,8 @@ use crate::oxidianlib::utils::move_to;
 use super::filesys::{convert_path, get_all_notes};
 use super::link::Link;
 use super::note;
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 
 pub struct ExportConfig<'a> {
     pub export_all: bool,
@@ -15,7 +16,7 @@ pub struct ExportConfig<'a> {
 pub struct ExportStats {
     note_count: u32,
     attachment_count: u32,
-    build_time: std::time::Duration
+    build_time: std::time::Duration,
 }
 
 impl ExportStats {
@@ -23,7 +24,7 @@ impl ExportStats {
         ExportStats {
             note_count: 0,
             attachment_count: 0,
-            build_time: std::time::Duration::new(0, 0)
+            build_time: std::time::Duration::new(0, 0),
         }
     }
 }
@@ -45,41 +46,74 @@ pub struct Exporter<'a> {
     pub stats: ExportStats,
 }
 
+fn iter_notes(input_dir: &Path) -> impl Iterator<Item = note::Note> {
+    let all_paths = get_all_notes(input_dir);
+    let all_notes = all_paths.filter_map(|note_path| {
+        note_path.map_or(None, |path| Some(note::Note::new(path).unwrap()))
+    });
+    return all_notes;
+}
 
 impl<'a> Exporter<'a> {
-    
-    pub fn new (input_dir: &'a Path, output_dir: &'a Path, cfg: &'a ExportConfig) -> Self {
+    pub fn new(input_dir: &'a Path, output_dir: &'a Path, cfg: &'a ExportConfig) -> Self {
         let stats = ExportStats::new();
-        Exporter { input_dir, output_dir, cfg, stats }
+        Exporter {
+            input_dir,
+            output_dir,
+            cfg,
+            stats,
+        }
+    }
+
+    fn generate_backlinks(&self) -> HashMap<PathBuf, Vec<Link>> {
+        let mut backlinks: HashMap<PathBuf, Vec<Link>> = HashMap::new();
+        for note in iter_notes(&self.input_dir) {
+            for link in note.links {
+                backlinks
+                    .entry(link.target.to_path_buf())
+                    .or_insert_with(Vec::new)
+                    .push(Link::from(note))
+            }
+        }
+        return backlinks;
     }
 
     pub fn export(&mut self) {
         let start = std::time::Instant::now();
-        let all_paths = get_all_notes(&self.input_dir);
-        for note_path in all_paths {
-            if let Ok(path) = note_path {
-                self.compile_note(&path);
-                self.stats.note_count += 1;
+
+        // Generate backlinks
+        let backlinks = self.generate_backlinks();
+
+        // TODO: test the compute/memory trade-off between
+        // * Constructing all the notes at once and collecting the iter
+        // * Constructing the iter twice -- i.e., building all the notes twice.
+        let iter_notes = iter_notes(&self.input_dir);
+        for mut note in iter_notes {
+            if let Some(refering_notes) = backlinks.get(&note.path) {
+                refering_notes
+                    .iter()
+                    .for_each(|refering_note| note.backlinks.push(&refering_note))
             }
+            self.compile_note(&note);
+            self.stats.note_count += 1;
         }
         self.stats.build_time = start.elapsed();
     }
 
-    fn compile_note(&mut self, path: &Path) {
-        println!("Processing note {:?}", path);
-        let note = note::Note::new(&path).unwrap();
-        let output_file = convert_path(&path, Some("html"))
+    fn compile_note(&mut self, new_note: &note::Note) {
+        println!("Processing note {:?}", new_note.path);
+        let output_file = convert_path(&new_note.path, Some("html"))
             .expect("Could not convert the note path to a valid HTML path.");
-        let output_path =
-            move_to(&output_file, &self.input_dir, &self.output_dir)
+        let output_path = move_to(&output_file, &self.input_dir, &self.output_dir)
             .unwrap_or(self.output_dir.join(output_file));
         println!("exporting to {:?}", output_path);
 
-        for link in &note.links {
+        for link in &new_note.links {
             self.transfer_linked_file(&link);
         }
-
-        note.to_html(&output_path).expect("Failed to export note");
+        new_note
+            .to_html(&output_path)
+            .expect("Failed to export note");
     }
 
     fn transfer_linked_file(&mut self, link: &Link) {

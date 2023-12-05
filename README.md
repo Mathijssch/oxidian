@@ -1,5 +1,12 @@
 # Convert Obsidian-flavored Markdown notes to HTML
 
+## Disclaimer 
+
+- This is very much a work in progress and is neither efficient, nor complete. 
+- There are still many `unwrap()` statements in the code, which should be replaced by proper error handling.
+
+
+
 ## Simple approach 
 
 For all files in the directory 

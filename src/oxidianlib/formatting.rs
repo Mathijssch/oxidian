@@ -8,6 +8,7 @@ fn md_link(text: &str, target: &str) -> String {
     format!("[{}]({})", text, target).to_string()
 }
 
+
 pub fn link_to_md(link: &Link) -> String {
 
     //println!("Converting link {:?}", link);

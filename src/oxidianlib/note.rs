@@ -1,8 +1,9 @@
 use std::fs::File;
 use std::io::{self, Error, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use super::filesys;
+//use super::formatting::link_to_md;
+use super::{filesys, html};
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use super::link::Link;
 use super::obs_placeholders::Sanitization;
@@ -14,13 +15,13 @@ use super::load_static::HTML_TEMPLATE;
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct Note<'a> {
-    pub path: &'a Path,
+    pub path: PathBuf,
     pub links: Vec<Link>,
     pub frontmatter: Option<Yaml>,
     content: String,
     placeholders: Vec<Sanitization>,
-    title: String,
-    backlinks: Vec<String>,
+    pub title: String,
+    pub backlinks: Vec<&'a Link>,
 }
 
 impl<'a> Note<'a> {
@@ -56,13 +57,13 @@ impl<'a> Note<'a> {
         return content;
     }
 
-    pub fn new(path: &'a Path) -> Result<Self, std::io::Error> {
-        let content = Self::sanitize(&read_note_from_file(path)?);
+    pub fn new(path: PathBuf) -> Result<Self, std::io::Error> {
+        let content = Self::sanitize(&read_note_from_file(&path)?);
         let frontmatter =
             extract_yaml_frontmatter(&content).and_then(|fm| parse_frontmatter(&fm).ok());
         let (content, placeholders) = Self::remove_protected_elems(content);
         let links = Self::find_obsidian_links(&content);
-        let title = Self::get_title(path, frontmatter.as_ref());
+        let title = Self::get_title(&path, frontmatter.as_ref());
         Ok(Note {
             path,
             links,
@@ -108,11 +109,21 @@ impl<'a> Note<'a> {
         let html_content = markdown_to_html(&content);
 
         let template_content = HTML_TEMPLATE; 
+
+        let backlinks: Vec<String> = self.backlinks.iter()
+            .map(|link| 
+                html::link(
+                    &filesys::convert_path(&link.target, Some("html")).unwrap(),
+                    &link.alias.clone().unwrap(), ""
+                )
+            ).collect();
         
         template_content.lines()
             .map(|line| {
                 line.replace(r"{{content}}", &html_content)
             })
+            .map(|line| 
+                line.replace(r"{{backlinks}}", &html::ul(backlinks.iter(), "class=\"backlinks\"")))
             .for_each(|line| {
                 writer.write_all(line.as_bytes()).unwrap();
                 writer.write_all(b"\n").unwrap();
@@ -146,7 +157,7 @@ fn format_admonitions(note: &str) -> String {
 
 
 pub fn create_note(path: &str) -> Note {
-    let the_path = Path::new(path);
+    let the_path = PathBuf::from(path);
     Note::new(the_path).unwrap()
 }
 
