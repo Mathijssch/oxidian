@@ -140,7 +140,9 @@ impl<'a> Exporter<'a> {
             // Maybe there is some macro magic that could be done here to avoid the
             // duplicate `copy` call, but this is not worth it in this case.
             if let Some(attachment_dir) = &self.cfg.attachment_dir {
-                let input_path = attachment_dir.join(attachment_dir);
+                let input_path = self.input_dir.join(
+                    attachment_dir.join(&link.target)
+                );
                 std::fs::copy(&input_path, &output_path).expect(&format!(
                     "Could not copy the attachment from {:?} to {:?}!",
                     input_path, output_path
