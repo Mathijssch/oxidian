@@ -84,8 +84,6 @@ impl<'a> Note<'a> {
         return obs_placeholders::disambiguate_protected(&content);
     }
 
-
-
     fn sanitize(content: &str) -> String {
         return format_admonitions(&strip_comments(content));
     }
@@ -117,6 +115,8 @@ impl<'a> Note<'a> {
                     &link.alias.clone().unwrap(), ""
                 )
             ).collect();
+
+        println!("Note {} has {} backlinks", self.title, backlinks.len());
         
         template_content.lines()
             .map(|line| {

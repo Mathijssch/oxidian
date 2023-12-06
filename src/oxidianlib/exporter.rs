@@ -68,11 +68,11 @@ impl<'a> Exporter<'a> {
     fn generate_backlinks(&self) -> HashMap<PathBuf, Vec<Link>> {
         let mut backlinks: HashMap<PathBuf, Vec<Link>> = HashMap::new();
         for note in iter_notes(&self.input_dir) {
-            for link in note.links {
+            for link in &note.links {
                 backlinks
-                    .entry(link.target.to_path_buf())
+                    .entry(self.input_dir.join(&link.target).with_extension("md"))
                     .or_insert_with(Vec::new)
-                    .push(Link::from(note))
+                    .push(Link::from_note(&note).set_relative(self.input_dir))
             }
         }
         return backlinks;
@@ -83,6 +83,7 @@ impl<'a> Exporter<'a> {
 
         // Generate backlinks
         let backlinks = self.generate_backlinks();
+        println!("{:?}", backlinks);
 
         // TODO: test the compute/memory trade-off between
         // * Constructing all the notes at once and collecting the iter
@@ -93,6 +94,8 @@ impl<'a> Exporter<'a> {
                 refering_notes
                     .iter()
                     .for_each(|refering_note| note.backlinks.push(&refering_note))
+            } else {
+                println!("No backlinks to path {:?}", note.path);
             }
             self.compile_note(&note);
             self.stats.note_count += 1;

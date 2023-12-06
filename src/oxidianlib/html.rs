@@ -11,12 +11,14 @@ pub fn img_tag(src: &str) -> String {
 }
 
 pub fn link(dst: &std::path::Path, text: &str, options: &str) -> String {
-    wrap_html_raw(text, "a", &format!("href={}, {}", dst.to_string_lossy(), options))
+    println!("Destination: {}", dst.to_string_lossy());
+    println!("Title: {}", text);
+    wrap_html_raw(text, "a", &format!("href={} {}", dst.to_string_lossy(), options))
 }
 
-pub fn ul<T: std::fmt::Debug, U: Iterator<Item = T>> (src: U, options: &str) -> String {
+pub fn ul<T: std::fmt::Display, U: Iterator<Item = T>> (src: U, options: &str) -> String {
     wrap_html_raw(
-        &src.map(|element| format!("<li> {:?}", element))
+        &src.map(|element| format!("<li> {}", element))
         .collect::<Vec<String>>()
         .join("\n")
         , "ul", options

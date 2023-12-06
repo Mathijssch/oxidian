@@ -7,7 +7,7 @@ lazy_static! {
         Regex::new(r"^(?P<file>[^#\^|]+)??([\^#](?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
 }
 
-use super::{errors, note::Note};
+use super::{errors, note::Note, utils::{move_to, prepend_slash}};
 
 #[derive(Debug,PartialEq)]
 pub struct Link {
@@ -98,6 +98,25 @@ impl Link {
         return LinkType::Note;
     }
 
+    ///Express the target of the link relative to the given directory. 
+    ///If the link is not in the given directory, then the target is not changed.
+    pub fn set_relative(mut self, dir: &Path) -> Self {
+        let relative_path = &self.target.strip_prefix(dir)
+            .unwrap_or(&self.target);
+        self.target = prepend_slash(relative_path);
+        self
+    }
+
+    pub fn from_note(note: &Note) -> Self {
+        Link {
+            target: note.path.clone(),
+            subtarget: None, 
+            alias: Some(note.title.clone()), 
+            source_string: "".to_string(), 
+            is_attachment: false
+        }
+    }
+
     ///Construct a new [Link] from an Obsidian-styled reference
     pub fn from_obsidian_link(
         obs_link: &str,
@@ -131,19 +150,16 @@ impl Link {
 }
 
 impl<'a> From<Note<'a>> for Link {
-
     fn from(note: Note<'a>) -> Self {
         Link {
             target: note.path.clone(),
             subtarget: None, 
-            alias: Some(note.title), 
+            alias: Some(note.title.clone()), 
             source_string: "".to_string(), 
             is_attachment: false
         }
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {
