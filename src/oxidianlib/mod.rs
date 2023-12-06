@@ -8,6 +8,7 @@ pub mod exporter;
 mod obs_comments;
 mod obs_admonitions; 
 mod obs_links;
+mod obs_tags;
 //mod obs_references; 
 mod formatting;
 mod html;

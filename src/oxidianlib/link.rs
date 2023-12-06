@@ -4,10 +4,10 @@ use regex::Regex;
 
 lazy_static! {
     static ref OBSIDIAN_NOTE_LINK_RE: Regex =
-        Regex::new(r"^(?P<file>[^#\^|]+)??([\^#](?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
+        Regex::new(r"^(?P<file>[^#\^|]+)??([#](?P<block>^)??(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
 }
 
-use super::{errors, note::Note, utils::{move_to, prepend_slash}};
+use super::{errors, note::Note, utils::prepend_slash};
 
 #[derive(Debug,PartialEq)]
 pub struct Link {
@@ -182,14 +182,13 @@ mod tests {
 
     #[test]
     fn test_from_obsidian_blockref() {
-        let test_string = "link_to_note^someblock"; 
+        let test_string = "link_to_note#^someblock"; 
         let expected_link = Link {
             target: PathBuf::from("link_to_note"), 
-            subtarget: Some(String::from("someblock")),
+            subtarget: Some(String::from("^someblock")),
             alias: None,
             is_attachment: false, 
             source_string: format!("[[{}]]", test_string).to_string()
-
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);

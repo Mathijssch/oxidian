@@ -75,6 +75,9 @@ fn find_pairs(content: &str, delim: &DelimPair) -> Vec<Sanitization> {
     result
 }
 
+///Find code that is within pairs of given delimiters 
+///(math and code) and replace them, by placeholders. 
+///Otherwise, tags or other special symbols may be found in these places.
 pub fn disambiguate_protected(content: &str) -> (String, Vec<Sanitization>) {
     let mut result = vec!();
 

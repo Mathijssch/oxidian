@@ -1,9 +1,15 @@
 use std::{path::{Path, PathBuf}, fs::File};
 use std::io::Read;
+use regex::Regex;
 
 use pulldown_cmark::html;
 
 use super::{exporter::ExportConfig, errors::ReadConfigError};
+
+lazy_static! {
+    static ref OBSIDIAN_TAG_RE: Regex =
+        Regex::new(r"(?<!\\)#([a-zA-Z-_/]+)(?![^[[]*]])").unwrap();
+}
 
 //pub fn find_all_occurrences(text: &str, pattern: &str) -> Vec<usize> {
 //    let mut indices = Vec::new();
@@ -57,3 +63,10 @@ pub fn read_config_from_file(config_path: &Path) -> Result<ExportConfig, ReadCon
     file.read_to_string(&mut buffer).map_err(|_| ReadConfigError::ReadToString)?;
     toml::from_str(&buffer).map_err(|_| ReadConfigError::InvalidToml(config_path.to_path_buf()))
 }
+
+
+pub fn find_tags(content: &str) {
+
+}
+
+

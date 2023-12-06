@@ -27,9 +27,7 @@ pub fn link_to_md(link: &Link) -> String {
             if let Some(subtarget) = &link.subtarget {
                 target_abs.push_str("#");
                 target_abs.push_str(subtarget);
-            }
-            return md_link(&link_text, &target_abs);
-        },
+            } return md_link(&link_text, &target_abs); },
         LinkType::External => {return md_link(&link_text, &link_target_str);},
         LinkType::Attachment(filetype) => {
             let target_rel = convert_path(&link.target, None).unwrap();
@@ -65,7 +63,7 @@ mod tests {
             .to_string();
         TestCase { 
             input_link: Link::from_obsidian_link("path_to_note|alias", false).unwrap(),
-            expected_output: format!("[alias]({})", slug_name).to_string()
+            expected_output: format!("[alias](/{})", slug_name).to_string()
         }
     }
     fn create_note_in_dir_link() -> TestCase {
@@ -75,7 +73,7 @@ mod tests {
             .to_string();
         TestCase { 
             input_link: Link::from_obsidian_link("subdir/path_to_note", false).unwrap(),
-            expected_output: format!("[subdir/path_to_note]({})", slug_name).to_string()
+            expected_output: format!("[subdir/path_to_note](/{})", slug_name).to_string()
         }
     }
     fn create_note_in_dir_sublink() -> TestCase {
@@ -85,7 +83,7 @@ mod tests {
             .to_string();
         TestCase { 
             input_link: Link::from_obsidian_link("subdir/path_to_note#heading|alias", false).unwrap(),
-            expected_output: format!("[alias]({}#heading)", slug_name).to_string()
+            expected_output: format!("[alias](/{}#heading)", slug_name).to_string()
         }
     }
     fn create_image_link() -> TestCase {
@@ -95,7 +93,7 @@ mod tests {
             .to_string();
         TestCase {
             input_link: Link::from_obsidian_link("path_to_image.png", true).unwrap(),
-            expected_output: format!("<img src=\"{}\"></img>", slug_name).to_string()
+            expected_output: format!("<img src=\"/{}\"></img>", slug_name).to_string()
         }
     }
     

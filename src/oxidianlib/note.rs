@@ -3,14 +3,14 @@ use std::io::{self, Error, Write};
 use std::path::{Path, PathBuf};
 
 //use super::formatting::link_to_md;
-use super::{filesys, html};
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use super::link::Link;
+use super::load_static::HTML_TEMPLATE;
 use super::obs_placeholders::Sanitization;
 use super::utils::{markdown_to_html, read_note_from_file};
-use super::{obs_admonitions, obs_comments, obs_links, obs_placeholders, formatting};
+use super::{filesys, html, obs_tags};
+use super::{formatting, obs_admonitions, obs_comments, obs_links, obs_placeholders};
 use yaml_rust::Yaml;
-use super::load_static::HTML_TEMPLATE;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -18,6 +18,7 @@ pub struct Note<'a> {
     pub path: PathBuf,
     pub links: Vec<Link>,
     pub frontmatter: Option<Yaml>,
+    pub tags: Vec<String>,
     content: String,
     placeholders: Vec<Sanitization>,
     pub title: String,
@@ -61,9 +62,16 @@ impl<'a> Note<'a> {
         let content = Self::sanitize(&read_note_from_file(&path)?);
         let frontmatter =
             extract_yaml_frontmatter(&content).and_then(|fm| parse_frontmatter(&fm).ok());
-        let (content, placeholders) = Self::remove_protected_elems(content);
+        // Remove code blocks, and math.
+        let (content, mut placeholders) = Self::remove_protected_elems(content);
+        // Extract the links
         let links = Self::find_obsidian_links(&content);
+        // Replace links by placeholders, since they may also contain protected symbols with
+        // special meaning, like `^` and `#`.
+        let content = Self::replace_links_by_placeholders(content, &mut placeholders, &links);
+        let tags = Self::find_tags(&content);
         let title = Self::get_title(&path, frontmatter.as_ref());
+
         Ok(Note {
             path,
             links,
@@ -71,17 +79,36 @@ impl<'a> Note<'a> {
             title,
             frontmatter,
             placeholders,
+            tags,
             backlinks: vec![],
         })
+    }
+
+    fn replace_links_by_placeholders(
+        content: String,
+        placeholders: &mut Vec<Sanitization>,
+        links: &Vec<Link>,
+    ) -> String {
+        let mut content = content;
+        for link in links {
+            let link_ph = Sanitization(link.source_string.to_string());
+            content = content.replace(&link_ph.0, &link_ph.get_placeholder());
+            placeholders.push(link_ph);
+        }
+        content
     }
 
     fn find_obsidian_links(content: &str) -> Vec<Link> {
         obs_links::find_obsidian_links(content)
     }
+    
+    fn find_tags(content: &str) -> Vec<String> {
+        obs_tags::find_tags(content)
+    }
 
     fn remove_protected_elems(content: String) -> (String, Vec<Sanitization>) {
-        // Remove math elements
-        return obs_placeholders::disambiguate_protected(&content);
+        // Remove math elements and code
+        obs_placeholders::disambiguate_protected(&content)
     }
 
     fn sanitize(content: &str) -> String {
@@ -97,33 +124,40 @@ impl<'a> Note<'a> {
         let mut writer = io::BufWriter::new(file);
 
         let mut content = self.content.to_owned();
+
         for placeholder in &self.placeholders {
-           content = content.replace(&placeholder.get_placeholder(), &placeholder.0);
+            content = content.replace(&placeholder.get_placeholder(), &placeholder.0);
         }
 
         content = self.process_links(content);
 
- 
         let html_content = markdown_to_html(&content);
 
-        let template_content = HTML_TEMPLATE; 
+        let template_content = HTML_TEMPLATE;
 
-        let backlinks: Vec<String> = self.backlinks.iter()
-            .map(|link| 
+        let backlinks: Vec<String> = self
+            .backlinks
+            .iter()
+            .map(|link| {
                 html::link(
                     &filesys::convert_path(&link.target, Some("html")).unwrap(),
-                    &link.alias.clone().unwrap(), ""
+                    &link.alias.clone().unwrap(),
+                    "",
                 )
-            ).collect();
+            })
+            .collect();
 
         println!("Note {} has {} backlinks", self.title, backlinks.len());
-        
-        template_content.lines()
+
+        template_content
+            .lines()
+            .map(|line| line.replace(r"{{content}}", &html_content))
             .map(|line| {
-                line.replace(r"{{content}}", &html_content)
+                line.replace(
+                    r"{{backlinks}}",
+                    &html::ul(backlinks.iter(), "class=\"backlinks\""),
+                )
             })
-            .map(|line| 
-                line.replace(r"{{backlinks}}", &html::ul(backlinks.iter(), "class=\"backlinks\"")))
             .for_each(|line| {
                 writer.write_all(line.as_bytes()).unwrap();
                 writer.write_all(b"\n").unwrap();
@@ -155,7 +189,6 @@ fn format_admonitions(note: &str) -> String {
     return output;
 }
 
-
 pub fn create_note(path: &str) -> Note {
     let the_path = PathBuf::from(path);
     Note::new(the_path).unwrap()
@@ -164,5 +197,3 @@ pub fn create_note(path: &str) -> Note {
 //pub fn print_text_event(e: &Event) {
 //    println!("{:?}", e);
 //}
-
-
