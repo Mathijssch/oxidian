@@ -53,3 +53,14 @@ pub enum NotePathError<T: fmt::Debug> {
     #[error("The given path to a Note {0:?} cannot be represented as valid UTF-8!")]
     InvalidUTF8(T)
 }
+
+
+#[derive(Error, Debug)]
+pub enum ReadConfigError<T: fmt::Debug> {
+    #[error("Error reading config file at path {0:?}.")]
+    NoSuchFile(T), 
+    #[error("Error reading config file to string")]
+    ReadToString,
+    #[error("Invalid toml file in path {0:?}. Could not load file into configuration object.")]
+    InvalidToml(T),
+}

@@ -1,15 +1,35 @@
 use crate::oxidianlib::utils::move_to;
 
+use super::errors::ReadConfigError;
 use super::filesys::{convert_path, get_all_notes};
 use super::link::Link;
 use super::note;
+use serde_derive::Deserialize;
 use std::collections::HashMap;
+use std::eprintln;
 use std::path::{Path, PathBuf};
 
-pub struct ExportConfig<'a> {
-    pub export_all: bool,
+#[derive(Debug, Deserialize)]
+pub struct ExportConfig {
     // Attachment directory relative to the notebook directory.
-    pub attachment_dir: Option<&'a Path>,
+    pub attachment_dir: Option<PathBuf>,
+    pub template_dir: Option<PathBuf>,
+}
+
+impl ExportConfig {
+    pub fn from_file<T: AsRef<Path>>(path: T) -> Result<ExportConfig, ReadConfigError<PathBuf>> {
+        let path = path.as_ref();
+        super::utils::read_config_from_file(path)
+    }
+}
+
+impl Default for ExportConfig {
+    fn default() -> Self {
+        ExportConfig {
+            attachment_dir: None,
+            template_dir: None,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -42,7 +62,7 @@ impl std::fmt::Display for ExportStats {
 pub struct Exporter<'a> {
     input_dir: &'a Path,
     output_dir: &'a Path,
-    cfg: &'a ExportConfig<'a>,
+    cfg: &'a ExportConfig,
     pub stats: ExportStats,
 }
 
@@ -100,7 +120,22 @@ impl<'a> Exporter<'a> {
             self.compile_note(&note);
             self.stats.note_count += 1;
         }
+
+        self.copy_static_files();
+
         self.stats.build_time = start.elapsed();
+    }
+
+    fn copy_static_files(&self) {
+        if let Some(template_dir) = &self.cfg.template_dir {
+            let static_dir_path = template_dir.join("static");
+            if let Err(_copy_err) = std::fs::copy(&static_dir_path, &self.output_dir) {
+                println!(
+                    "Could not copy the static directory {:?} to {:?}",
+                    static_dir_path, self.output_dir
+                );
+            }
+        }
     }
 
     fn compile_note(&mut self, new_note: &note::Note) {
@@ -140,18 +175,17 @@ impl<'a> Exporter<'a> {
             // Maybe there is some macro magic that could be done here to avoid the
             // duplicate `copy` call, but this is not worth it in this case.
             if let Some(attachment_dir) = &self.cfg.attachment_dir {
-                let input_path = self.input_dir.join(
-                    attachment_dir.join(&link.target)
-                );
-                std::fs::copy(&input_path, &output_path).expect(&format!(
-                    "Could not copy the attachment from {:?} to {:?}!",
-                    input_path, output_path
-                ));
+                let input_path = self.input_dir.join(attachment_dir.join(&link.target));
+                if let Err(err) = std::fs::copy(&input_path, &output_path) {
+                    eprintln!("Could not copy the attachment from {:?} to {:?}! Got error {:?}", 
+                        input_path, output_path, err);
+                }
             } else {
-                std::fs::copy(&link.target, &output_path).expect(&format!(
-                    "Could not copy the attachment from {:?} to {:?}!",
-                    &link.target, output_path
-                ));
+                let input_path = self.input_dir.join(&link.target);
+                if let Err(err) = std::fs::copy(&input_path, &output_path) {
+                    eprintln!("Could not copy the attachment from {:?} to {:?}! Got error {:?}", 
+                        input_path, output_path, err);
+                }
             }
             self.stats.attachment_count += 1;
         }

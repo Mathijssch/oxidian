@@ -3,6 +3,8 @@ use std::io::Read;
 
 use pulldown_cmark::html;
 
+use super::{exporter::ExportConfig, errors::ReadConfigError};
+
 //pub fn find_all_occurrences(text: &str, pattern: &str) -> Vec<usize> {
 //    let mut indices = Vec::new();
 //    let mut start = 0;
@@ -47,4 +49,11 @@ pub fn markdown_to_html(markdown: &str) -> String {
 pub fn prepend_slash(path: &Path) -> PathBuf {
     let slash = Path::new("/");
     slash.join(&path)
+}
+
+pub fn read_config_from_file(config_path: &Path) -> Result<ExportConfig, ReadConfigError<PathBuf>> {
+    let mut file = File::open(config_path).map_err(|_err| ReadConfigError::NoSuchFile(config_path.to_path_buf()))?;
+    let mut buffer = String::new();
+    file.read_to_string(&mut buffer).map_err(|_| ReadConfigError::ReadToString)?;
+    toml::from_str(&buffer).map_err(|_| ReadConfigError::InvalidToml(config_path.to_path_buf()))
 }

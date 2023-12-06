@@ -8,7 +8,7 @@ use oxidian::oxidianlib::{
     errors, //::{self, IndexError},
 };
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 type MissingDirectory<'a> = errors::MissingDirectoryError<&'a Path>;
 type MissingIndex<'a> = errors::MissingIndexError<&'a Path>;
@@ -35,19 +35,19 @@ enum Commands {
     Build {
         /// The directory containing the notes
         #[arg(short, long)]
-        dir: String,
+        dir: PathBuf,
 
         /// The output directory
         #[arg(short, long)]
-        out: String,
+        out: PathBuf,
 
         /// Path to the index file
         #[arg(short, long)]
-        index_path: Option<String>,
-
-        /// Path where the attachments are stored in the input directory
+        index: Option<PathBuf>,
+        
+        /// Path to the config file. Uses `[dir]/config.toml` by default.
         #[arg(short, long)]
-        attachment_dir: Option<String>,
+        cfg: Option<PathBuf>,
     },
     /// Launches a server
     #[command()]
@@ -68,20 +68,11 @@ fn main() {
         Commands::Build {
             dir,
             out,
-            index_path,
-            attachment_dir,
+            index, 
+            cfg
         } => {
-            let index = index_path.unwrap_or(INDEX_FILE.to_owned());
-            let index_path = Path::new(&index);
-            let dir = Path::new(&dir);
-            let out = Path::new(&out);
-
-            if let Some(attach) = attachment_dir {
-                let attachments = Some(Path::new(&attach));
-                build_vault(dir, out, index_path, attachments);
-            } else {
-                build_vault(dir, out, index_path, None);
-            }
+            let index = index.unwrap_or(PathBuf::from(INDEX_FILE));
+            build_vault(dir, out, index, cfg);
         }
         Commands::Serve { port } => {
             let port_nb = port.unwrap_or(8080);
@@ -91,10 +82,10 @@ fn main() {
 }
 
 fn build_vault(
-    input_dir: &Path,
-    output_dir: &Path,
-    index_file: &Path,
-    attachment_file: Option<&Path>,
+    input_dir: PathBuf,
+    output_dir: PathBuf,
+    index_file: PathBuf,
+    config_file: Option<PathBuf>
 ) {
     // Prepare
     // --------------------
@@ -102,12 +93,14 @@ fn build_vault(
         println!("{}", e);
     };
 
-    let export_config = exporter::ExportConfig {
-        export_all: true,
-        attachment_dir: attachment_file,
-    };
+    let default_config_path = input_dir.join("config.toml");
+    let config_file = config_file
+        .unwrap_or(default_config_path); 
 
-    let mut builder = exporter::Exporter::new(input_dir, output_dir, &export_config);
+    let export_config = exporter::ExportConfig::from_file(config_file)
+        .unwrap_or_default();
+
+    let mut builder = exporter::Exporter::new(&input_dir, &output_dir, &export_config);
 
     // Do the export
     builder.export();

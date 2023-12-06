@@ -11,8 +11,6 @@ pub fn img_tag(src: &str) -> String {
 }
 
 pub fn link(dst: &std::path::Path, text: &str, options: &str) -> String {
-    println!("Destination: {}", dst.to_string_lossy());
-    println!("Title: {}", text);
     wrap_html_raw(text, "a", &format!("href={} {}", dst.to_string_lossy(), options))
 }
 

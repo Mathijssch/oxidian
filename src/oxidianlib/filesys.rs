@@ -21,7 +21,7 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
             }
         }
     } else {
-        println!("Directory '{:?}' already exists.", path);
+        println!("Directory '{:?}' already exists. Skipping.", path);
         Ok(())
     }
 }
