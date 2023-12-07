@@ -1,4 +1,6 @@
+use crate::oxidianlib::filesys::copy_directory;
 use crate::oxidianlib::utils::move_to;
+use log::{debug, error, warn, info};
 
 use super::errors::ReadConfigError;
 use super::filesys::{convert_path, get_all_notes};
@@ -6,7 +8,6 @@ use super::link::Link;
 use super::note;
 use serde_derive::Deserialize;
 use std::collections::HashMap;
-use std::eprintln;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Deserialize)]
@@ -14,6 +15,7 @@ pub struct ExportConfig {
     // Attachment directory relative to the notebook directory.
     pub attachment_dir: Option<PathBuf>,
     pub template_dir: Option<PathBuf>,
+    pub static_dir: Option<PathBuf>
 }
 
 impl ExportConfig {
@@ -28,6 +30,7 @@ impl Default for ExportConfig {
         ExportConfig {
             attachment_dir: None,
             template_dir: None,
+            static_dir: None,
         }
     }
 }
@@ -100,10 +103,11 @@ impl<'a> Exporter<'a> {
 
     pub fn export(&mut self) {
         let start = std::time::Instant::now();
+        debug!("Start export with configuration\n{}\n{:?}\n{}", "-".repeat(30), self.cfg, "-".repeat(30));
 
         // Generate backlinks
         let backlinks = self.generate_backlinks();
-        println!("{:?}", backlinks);
+        //println!("{:?}", backlinks);
 
         // TODO: test the compute/memory trade-off between
         // * Constructing all the notes at once and collecting the iter
@@ -115,7 +119,7 @@ impl<'a> Exporter<'a> {
                     .iter()
                     .for_each(|refering_note| note.backlinks.push(&refering_note))
             } else {
-                println!("No backlinks to path {:?}", note.path);
+                debug!("No backlinks to path {:?}", note.path);
             }
             self.compile_note(&note);
             self.stats.note_count += 1;
@@ -127,24 +131,27 @@ impl<'a> Exporter<'a> {
     }
 
     fn copy_static_files(&self) {
-        if let Some(template_dir) = &self.cfg.template_dir {
-            let static_dir_path = template_dir.join("static");
-            if let Err(_copy_err) = std::fs::copy(&static_dir_path, &self.output_dir) {
-                println!(
-                    "Could not copy the static directory {:?} to {:?}",
-                    static_dir_path, self.output_dir
+        if let Some(static_dir) = &self.cfg.static_dir {
+            let static_dir_path = &self.input_dir.join(static_dir);
+            info!("Copying static directory {:?}", static_dir_path);
+            if let Err(copy_err) = copy_directory(&static_dir_path, &self.output_dir) {
+                error!(
+                    "Could not copy the static directory {:?} to {:?}. Got error {:?}",
+                    static_dir_path, self.output_dir, copy_err
                 );
             }
+        } else {
+            warn!("No template directory was provided. Using the default template.");
         }
     }
 
     fn compile_note(&mut self, new_note: &note::Note) {
-        println!("Processing note {:?}", new_note.path);
+        debug!("Processing note {:?}", new_note.path);
         let output_file = convert_path(&new_note.path, Some("html"))
             .expect("Could not convert the note path to a valid HTML path.");
         let output_path = move_to(&output_file, &self.input_dir, &self.output_dir)
             .unwrap_or(self.output_dir.join(output_file));
-        println!("exporting to {:?}", output_path);
+        debug!("exporting to {:?}", output_path);
 
         for link in &new_note.links {
             self.transfer_linked_file(&link);
@@ -177,13 +184,13 @@ impl<'a> Exporter<'a> {
             if let Some(attachment_dir) = &self.cfg.attachment_dir {
                 let input_path = self.input_dir.join(attachment_dir.join(&link.target));
                 if let Err(err) = std::fs::copy(&input_path, &output_path) {
-                    eprintln!("Could not copy the attachment from {:?} to {:?}! Got error {:?}", 
+                    error!("Could not copy the attachment from {:?} to {:?}! Got error {:?}", 
                         input_path, output_path, err);
                 }
             } else {
                 let input_path = self.input_dir.join(&link.target);
                 if let Err(err) = std::fs::copy(&input_path, &output_path) {
-                    eprintln!("Could not copy the attachment from {:?} to {:?}! Got error {:?}", 
+                    error!("Could not copy the attachment from {:?} to {:?}! Got error {:?}", 
                         input_path, output_path, err);
                 }
             }

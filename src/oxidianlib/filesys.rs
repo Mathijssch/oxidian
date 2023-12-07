@@ -1,3 +1,4 @@
+use log::{info, error, warn, debug, trace};
 use super::{constants::NOTE_EXT, errors::NotePathError};
 use std::{io, fs, ffi::OsStr};
 use slugify::slugify;
@@ -12,16 +13,16 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
     if !path.exists() {
         match fs::create_dir(path) {
             Ok(_) => {
-                println!("Directory '{:?}' created successfully.", path);
+                info!("Directory '{:?}' created successfully.", path);
                 Ok(())
             }
             Err(err) => {
-                eprintln!("Error creating directory '{:?}': {:?}", path, err);
+                error!("Error creating directory '{:?}': {:?}", path, err);
                 Err(err)
             }
         }
     } else {
-        println!("Directory '{:?}' already exists. Skipping.", path);
+        info!("Directory '{:?}' already exists. Skipping.", path);
         Ok(())
     }
 }
@@ -72,6 +73,36 @@ pub fn convert_path<'a> (path: &'a Path, extension: Option<&str>) -> Result<Path
     Ok(PathBuf::from(slug))
 }
 
+pub fn copy_directory<U: AsRef<Path>, T: AsRef<Path>>(src: U, dest: T) -> io::Result<()> {
+    copy_directory_aux(src.as_ref(), dest.as_ref())
+}
+
+
+
+///Recursively copy directory `src` to `dest`.
+fn copy_directory_aux(src: &Path, dest: &Path) -> io::Result<()> {
+    // Create the destination directory if it doesn't exist
+    create_dir_if_not_exists(dest)?;
+
+    // Iterate through the entries in the source directory
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let entry_type = entry.file_type()?;
+
+        let entry_path = entry.path();
+        let dest_path = dest.join(entry.path().file_name().unwrap());
+
+        if entry_type.is_dir() {
+            // Recursively copy subdirectories
+            copy_directory_aux(&entry_path, &dest_path)?;
+        } else {
+            // Copy files
+            fs::copy(&entry_path, &dest_path)?;
+        }
+    }
+
+    Ok(())
+}
 
 /// Unit tests
 #[cfg(test)]
