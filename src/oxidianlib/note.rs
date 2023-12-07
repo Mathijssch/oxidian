@@ -18,7 +18,7 @@ pub struct Note<'a> {
     pub path: PathBuf,
     pub links: Vec<Link>,
     pub frontmatter: Option<Yaml>,
-    pub tags: Vec<String>,
+    pub tags: Vec<obs_tags::Tag>,
     content: String,
     placeholders: Vec<Sanitization>,
     pub title: String,
@@ -102,7 +102,7 @@ impl<'a> Note<'a> {
         obs_links::find_obsidian_links(content)
     }
     
-    fn find_tags(content: &str) -> Vec<String> {
+    fn find_tags(content: &str) -> Vec<obs_tags::Tag> {
         obs_tags::find_tags(content)
     }
 

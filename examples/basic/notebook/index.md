@@ -1,5 +1,9 @@
 # Homepage
 
+#index_page 
+
+#another_tag #layered/tag
+
 This is a note, which links to 
 [[subdirectory/subnote]], and to 
 [[chance constraints]]. 
