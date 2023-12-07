@@ -8,7 +8,7 @@ use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use super::link::Link;
 use super::load_static::HTML_TEMPLATE;
 use super::obs_placeholders::Sanitization;
-use super::utils::{markdown_to_html, read_note_from_file};
+use super::utils::{markdown_to_html, read_note_from_file, self};
 use super::{filesys, html, obs_tags};
 use super::{formatting, obs_admonitions, obs_comments, obs_links, obs_placeholders};
 use yaml_rust::Yaml;
@@ -67,9 +67,19 @@ impl<'a> Note<'a> {
     }
 
     pub fn new(path: PathBuf) -> Result<Self, std::io::Error> {
-        let content = Self::sanitize(&read_note_from_file(&path)?);
-        let frontmatter =
-            extract_yaml_frontmatter(&content).and_then(|fm| parse_frontmatter(&fm).ok());
+        let mut content = Self::sanitize(&read_note_from_file(&path)?);
+
+        let frontmatter = match extract_yaml_frontmatter(&content) {
+            Some(fm_content) => {
+                let fm_count = fm_content.lines().count() + 2; // +2 for the surrounding "---"
+                                                               // lines
+                debug!("Found {} lines of frontmatter in {:?}", fm_count, path);
+                content = utils::remove_first_n_lines(&content, fm_count);
+                parse_frontmatter(&fm_content).ok()
+            }, 
+            None => None
+        };
+
         // Remove code blocks, and math.
         let (content, mut placeholders) = Self::remove_protected_elems(content);
         // Extract the links
@@ -111,6 +121,7 @@ impl<'a> Note<'a> {
     }
     
     fn find_tags(content: &str) -> Vec<obs_tags::Tag> {
+        // TODO: Extract tags from the frontmatter
         obs_tags::find_tags(content)
     }
 

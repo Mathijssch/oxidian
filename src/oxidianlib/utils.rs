@@ -68,4 +68,18 @@ pub fn read_config_from_file(config_path: &Path) -> Result<ExportConfig, ReadCon
 }
 
 
+pub fn remove_first_n_lines(input: &str, n: usize) -> String {
+    let mut offset = 0;
+    let mut lines = input.lines();
+
+    for _ in 0..n {
+        if let Some(line) = lines.next() {
+            offset += line.len() + 1; // Add 1 to account for the newline character
+        } else {
+            // If there are fewer lines than n, return an empty string
+            return String::new();
+        }
+    }
+    input[offset..].to_string()
+}
 

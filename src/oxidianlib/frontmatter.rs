@@ -12,6 +12,7 @@ pub fn extract_yaml_frontmatter(content: & str) -> Option<String> {
     for text_line in lines { 
         if text_line == "---" {success = true; break;} 
         result.push_str(text_line);
+        result.push_str("\n");
     }
     if success {Some(result)}
     else {None}
