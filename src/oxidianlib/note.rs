@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{self, Error, Write};
 use std::path::{Path, PathBuf};
+use log::debug;
 
 //use super::formatting::link_to_md;
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
@@ -56,6 +57,13 @@ impl<'a> Note<'a> {
             content = content.replace(&link.source_string, &formatting::link_to_md(link));
         }
         return content;
+    }
+
+    fn process_tags(&self, mut content: String) -> String {
+        for tag in &self.tags {
+            content = content.replace(&tag.source, &formatting::tag_to_md(&tag));
+        }
+        content
     }
 
     pub fn new(path: PathBuf) -> Result<Self, std::io::Error> {
@@ -130,6 +138,7 @@ impl<'a> Note<'a> {
         }
 
         content = self.process_links(content);
+        content = self.process_tags(content);
 
         let html_content = markdown_to_html(&content);
 
@@ -147,11 +156,12 @@ impl<'a> Note<'a> {
             })
             .collect();
 
-        println!("Note {} has {} backlinks", self.title, backlinks.len());
+        debug!("Note {} has {} backlinks", self.title, backlinks.len());
 
         template_content
             .lines()
             .map(|line| line.replace(r"{{content}}", &html_content))
+            .map(|line| line.replace(r"{{title}}", &self.title))
             .map(|line| {
                 line.replace(
                     r"{{backlinks}}",

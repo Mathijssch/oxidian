@@ -1,15 +1,10 @@
 use std::{path::{Path, PathBuf}, fs::File};
 use std::io::Read;
-use regex::Regex;
 
 use pulldown_cmark::html;
 
 use super::{exporter::ExportConfig, errors::ReadConfigError};
 
-lazy_static! {
-    static ref OBSIDIAN_TAG_RE: Regex =
-        Regex::new(r"(?<!\\)#([a-zA-Z-_/]+)(?![^[[]*]])").unwrap();
-}
 
 //pub fn find_all_occurrences(text: &str, pattern: &str) -> Vec<usize> {
 //    let mut indices = Vec::new();
@@ -44,7 +39,15 @@ pub fn move_to(path: &Path, original: &Path, new_ref: &Path) -> Result<PathBuf, 
 
 
 pub fn markdown_to_html(markdown: &str) -> String {  
-    let parser = pulldown_cmark::Parser::new(&markdown);
+    // Set up options and parser. Strikethroughs are not part of the CommonMark standard
+    // and we therefore must enable it explicitly.
+    let mut options = pulldown_cmark::Options::empty();
+    options.insert(pulldown_cmark::Options::ENABLE_STRIKETHROUGH);
+    options.insert(pulldown_cmark::Options::ENABLE_TABLES);
+    options.insert(pulldown_cmark::Options::ENABLE_FOOTNOTES);
+    options.insert(pulldown_cmark::Options::ENABLE_TASKLISTS);
+
+    let parser = pulldown_cmark::Parser::new_ext(&markdown, options);
     let mut html_output = String::new();
     html::push_html(&mut html_output, parser);
     return html_output;
@@ -64,9 +67,5 @@ pub fn read_config_from_file(config_path: &Path) -> Result<ExportConfig, ReadCon
     toml::from_str(&buffer).map_err(|_| ReadConfigError::InvalidToml(config_path.to_path_buf()))
 }
 
-
-pub fn find_tags(content: &str) {
-
-}
 
 

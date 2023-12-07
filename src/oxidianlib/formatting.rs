@@ -1,5 +1,6 @@
 use super::html;
 use super::link::{Link, LinkType, FileType};
+use super::obs_tags::Tag;
 use super::filesys::convert_path;
 use std::path::Path;
 use super::utils::prepend_slash;
@@ -8,6 +9,10 @@ fn md_link(text: &str, target: &str) -> String {
     format!("[{}]({})", text, target).to_string()
 }
 
+
+pub fn tag_to_md(tag: &Tag) -> String {
+    return html::wrap_html_raw(&tag.tag_path, "span", "class=\"tag\"");
+}
 
 pub fn link_to_md(link: &Link) -> String {
 

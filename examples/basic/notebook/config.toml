@@ -1,0 +1,2 @@
+attachment_dir = "attachments"
+static_dir = "static/css" # Relative to vault content.

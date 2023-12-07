@@ -1,7 +1,9 @@
 extern crate oxidian;
+extern crate pretty_env_logger;
+#[macro_use] extern crate log;
+
+
 use clap::{Parser, Subcommand};
-//use oxidian::oxidianlib::filesys::{get_all_notes, convert_path};
-//use oxidian::oxidianlib::note;
 use oxidian::oxidianlib::exporter;
 use oxidian::oxidianlib::{
     constants::INDEX_FILE,
@@ -62,6 +64,8 @@ fn serve(port: u32) {
 }
 
 fn main() {
+    pretty_env_logger::init();
+
     let args = Cli::parse();
 
     match args.command {
@@ -71,7 +75,9 @@ fn main() {
             index, 
             cfg
         } => {
+            trace!("Running build command.");
             let index = index.unwrap_or(PathBuf::from(INDEX_FILE));
+            debug!("index file: {:?}", index);
             build_vault(dir, out, index, cfg);
         }
         Commands::Serve { port } => {
@@ -90,7 +96,7 @@ fn build_vault(
     // Prepare
     // --------------------
     if let Err(e) = validate_build_args(&input_dir, &output_dir, &index_file) {
-        println!("{}", e);
+        log::warn!("{}", e);
     };
 
     let default_config_path = input_dir.join("config.toml");
@@ -107,7 +113,7 @@ fn build_vault(
 
     // Print outputs
     // ----------------------
-    println!("{}", builder.stats);
+    info!("{}", builder.stats);
 }
 
 fn validate_build_args<'a>(

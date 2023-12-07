@@ -4,6 +4,8 @@
 
 #another_tag #layered/tag
 
+Here is a [[test]] with some advanced typography.
+
 This is a note, which links to 
 [[subdirectory/subnote]], and to 
 [[chance constraints]]. 
