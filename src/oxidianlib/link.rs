@@ -4,7 +4,7 @@ use regex::Regex;
 
 lazy_static! {
     static ref OBSIDIAN_NOTE_LINK_RE: Regex =
-        Regex::new(r"^(?P<file>[^#\^|]+)??([#](?P<block>^)??(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
+        Regex::new(r"^(?P<file>[^#\^|]*)??([#](?P<block>^)??(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
 }
 
 use super::{errors, note::Note, utils::prepend_slash};
@@ -125,14 +125,22 @@ impl Link {
         let captures = OBSIDIAN_NOTE_LINK_RE
             .captures(obs_link)
             .ok_or_else(|| errors::InvalidObsidianLink::ParseError(obs_link.to_string()))?;
-        let target = captures
-            .name("file")
-            .ok_or_else(|| errors::InvalidObsidianLink::MissingMatchGroup {
-                link: obs_link.to_string(),
-                group: "file".to_string(),
-            })?
-            .as_str()
-            .trim();
+
+        let target = match captures.name("file") {
+            Some(filename) => filename.as_str().trim(),
+            None => ""
+        };
+
+        //let target = captures
+            //.name("file")
+
+            //.unwrap_or_else(|| "")
+            ////.ok_or_else(|| errors::InvalidObsidianLink::MissingMatchGroup {
+            ////    link: obs_link.to_string(),
+            ////    group: "file".to_string(),
+            ////})?
+            //.as_str()
+            //.trim();
 
         let alias = captures.name("label").map(|v| v.as_str().to_string());
         let subtarget = captures.name("section").map(|v| v.as_str().to_string())
@@ -229,6 +237,20 @@ mod tests {
         let expected_link = Link {
             target: PathBuf::from("link to note"), 
             subtarget: None,
+            alias: None,
+            is_attachment: false, 
+            source_string: format!("[[{}]]", test_string).to_string()
+        };
+        let got_link = Link::from_obsidian_link(test_string, false).unwrap();
+        assert_eq!(expected_link, got_link);
+    }
+    
+    #[test]
+    fn test_from_obsidian_no_file() {
+        let test_string = "#^internal_id"; 
+        let expected_link = Link {
+            target: PathBuf::from(""), 
+            subtarget: Some("^internal_id".to_string()),
             alias: None,
             is_attachment: false, 
             source_string: format!("[[{}]]", test_string).to_string()
