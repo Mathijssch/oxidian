@@ -41,7 +41,7 @@ enum Commands {
 
         /// The output directory
         #[arg(short, long)]
-        out: PathBuf,
+        out: Option<PathBuf>,
 
         /// Path to the index file
         #[arg(short, long)]
@@ -78,6 +78,18 @@ fn main() {
             trace!("Running build command.");
             let index = index.unwrap_or(PathBuf::from(INDEX_FILE));
             debug!("index file: {:?}", index);
+            let out = out.unwrap_or_else(|| {
+                let mut out = dir.clone();
+                if let Some(main_dir) = out.file_name() { 
+                    let mut filename = main_dir.to_owned(); 
+                    filename.push(std::ffi::OsString::from("_out"));
+                    out.set_file_name(filename);
+                } else {
+                    out.set_file_name("notebook_out");
+                }
+                out
+            });
+            debug!("output directory: {:?}", out);
             build_vault(dir, out, index, cfg);
         }
         Commands::Serve { port } => {
