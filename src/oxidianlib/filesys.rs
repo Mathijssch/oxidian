@@ -22,7 +22,7 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
             }
         }
     } else {
-        info!("Directory '{:?}' already exists. Skipping.", path);
+        debug!("Directory '{:?}' already exists. Skipping.", path);
         Ok(())
     }
 }
