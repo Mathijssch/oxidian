@@ -11,7 +11,7 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
     //let path = std::path::Path::new(dir_path);
     //
     if !path.exists() {
-        match fs::create_dir(path) {
+        match fs::create_dir_all(path) {
             Ok(_) => {
                 info!("Directory '{:?}' created successfully.", path);
                 Ok(())
