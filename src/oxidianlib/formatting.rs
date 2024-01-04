@@ -33,6 +33,14 @@ pub fn link_to_md(link: &Link) -> String {
                 target_abs.push_str("#");
                 target_abs.push_str(subtarget);
             } return md_link(&link_text, &target_abs); },
+        LinkType::Internal => {
+            let mut target_abs = "".to_string();
+            if let Some(subtarget) = &link.subtarget {
+                target_abs.push_str("#");
+                target_abs.push_str(subtarget);
+            } 
+            return md_link(&link_text, &target_abs); 
+        },
         LinkType::External => {return md_link(&link_text, &link_target_str);},
         LinkType::Attachment(filetype) => {
             let target_rel = convert_path(&link.target, None).unwrap();

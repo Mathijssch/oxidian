@@ -73,7 +73,7 @@ impl<'a> Note<'a> {
             Some(fm_content) => {
                 let fm_count = fm_content.lines().count() + 2; // +2 for the surrounding "---"
                                                                // lines
-                debug!("Found {} lines of frontmatter in {:?}", fm_count, path);
+                //debug!("Found {} lines of frontmatter in {:?}", fm_count, path);
                 content = utils::remove_first_n_lines(&content, fm_count);
                 parse_frontmatter(&fm_content).ok()
             }, 

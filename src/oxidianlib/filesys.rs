@@ -29,7 +29,9 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
 
 ///Return an iterator over notes in the given directory.
 pub fn get_all_notes(path: &Path) -> impl Iterator<Item = io::Result<PathBuf>> {
-    let entries = WalkDir::new(path).into_iter().filter_map(Result::ok);
+    let entries = WalkDir::new(path).into_iter()
+        .filter_map(Result::ok)
+    ;
 
     entries.filter_map(|entry| {
         let path = entry.into_path();
@@ -44,6 +46,30 @@ pub fn get_all_notes(path: &Path) -> impl Iterator<Item = io::Result<PathBuf>> {
     })
 }
 
+pub fn get_all_notes_exclude<'a>(path: &Path, ignore: &'a Vec<PathBuf>) -> impl Iterator<Item = io::Result<PathBuf>> + 'a {
+    let entries = WalkDir::new(path).into_iter()
+        .filter_entry(|entry| {
+            let result = !ignore.iter().any(|ignore_dir| entry.path() == ignore_dir ); 
+            if !result {
+                info!("Ignoring {:?}", entry);
+            }
+            return result
+        })
+        .filter_map(Result::ok)
+    ;
+
+    entries.filter_map(|entry| {
+        let path = entry.into_path();
+        let extension = path.extension()?.to_str()?.to_lowercase();
+
+        let contains = NOTE_EXT.iter().any(|ext| **ext == extension);
+        if contains {
+            Some(Ok(path))
+        } else {
+            None
+        }
+    })
+}
 
 /// Convert the path to a markdown file to a slugified version of the path with either
 /// * The given extension, 
@@ -55,7 +81,8 @@ pub fn convert_path<'a> (path: &'a Path, extension: Option<&str>) -> Result<Path
         None => {path.extension()}
     };
     //let extension = path.extension().ok_or_else(err)
-    let stem = path.file_stem().ok_or_else(| | NotePathError::NoStem(path))?
+    let stem = path.file_stem()
+        .ok_or_else(| | NotePathError::NoStem(path))?
         .to_str()
         .ok_or_else(|| NotePathError::InvalidUTF8(path))?;
 

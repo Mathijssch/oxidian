@@ -22,7 +22,7 @@ pub struct Link {
 pub enum LinkType {
     External,
     Note,
-    Internal(InternalType),
+    Internal,
     Attachment(FileType),
 }
 
@@ -33,12 +33,6 @@ pub enum FileType {
     Video,
     Audio,
     Misc,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum InternalType {
-    Header,
-    Blockref,
 }
 
 //type InvalidLink = errors::InvalidObsidianLink<String, String>;
@@ -93,6 +87,10 @@ impl Link {
 
         if &self.target.starts_with("http://") | &self.target.starts_with("https://") {
             return LinkType::External;
+        };
+
+        if self.target.file_name().is_none() {
+            return LinkType::Internal;
         };
 
         return LinkType::Note;
