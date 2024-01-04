@@ -100,9 +100,6 @@ impl<'a> Exporter<'a> {
                     .push(Link::from_note(&note).set_relative(self.input_dir))
             }
             notes_count += 1;
-            if notes_count %10 == 9{
-                println!("Covered 10 notes");
-            }
         }
         debug!("Collected backlinks in {} notes", notes_count);
         return backlinks;
