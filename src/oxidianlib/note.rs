@@ -7,7 +7,8 @@ use log::debug;
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use super::link::Link;
 use super::load_static::HTML_TEMPLATE;
-use super::obs_placeholders::Sanitization;
+use super::placeholder::Sanitization;
+use super::obs_headers::HeaderParser;
 use super::utils::{markdown_to_html, read_note_from_file, self};
 use super::{filesys, html, obs_tags};
 use super::{formatting, obs_admonitions, obs_comments, obs_links, obs_placeholders};
@@ -66,6 +67,23 @@ impl<'a> Note<'a> {
         content
     }
 
+    fn process_headers(content: String) -> String { 
+        let mut parser = HeaderParser::new();
+
+        // Add a bit of buffer capacity for the newlines that we'll add.
+        let mut updated = String::with_capacity(content.len() + 10);
+        for line in content.lines() {
+            if let Some(updated_line) = parser.process_line(line) {
+                updated.push_str(&updated_line);
+            } else 
+            {
+                updated.push_str(line);
+            }
+            updated.push('\n');
+        }
+        return updated;
+    }
+
     pub fn new(path: PathBuf) -> Result<Self, std::io::Error> {
         let mut content = Self::sanitize(&read_note_from_file(&path)?);
 
@@ -81,13 +99,16 @@ impl<'a> Note<'a> {
         };
 
         // Remove code blocks, and math.
-        let (content, mut placeholders) = Self::remove_protected_elems(content);
+        let (mut content, mut placeholders) = Self::remove_protected_elems(content);
         // Extract the links
         let links = Self::find_obsidian_links(&content);
         // Replace links by placeholders, since they may also contain protected symbols with
         // special meaning, like `^` and `#`.
-        let content = Self::replace_links_by_placeholders(content, &mut placeholders, &links);
+        content = Self::replace_links_by_placeholders(content, &mut placeholders, &links);
         let tags = Self::find_tags(&content);
+        // Replace admonitions by placeholders, so they are not recognized as quotes by the
+        // markdown processor 
+        content = Self::replace_admonitions_by_placeholders(content, &mut placeholders);
         let title = Self::get_title(&path, frontmatter.as_ref());
 
         Ok(Note {
@@ -109,11 +130,32 @@ impl<'a> Note<'a> {
     ) -> String {
         let mut content = content;
         for link in links {
-            let link_ph = Sanitization(link.source_string.to_string());
-            content = content.replace(&link_ph.0, &link_ph.get_placeholder());
+            let link_ph = Sanitization::from(link.source_string.to_string());
+            content = content.replace(&link_ph.original, &link_ph.get_placeholder());
             placeholders.push(link_ph);
         }
         content
+    }
+
+    fn replace_admonitions_by_placeholders(
+        content: String, 
+        placeholders: &mut Vec<Sanitization>
+        ) -> String {
+        let mut admonitions = obs_admonitions::AdmonitionParser::new();
+        let mut output = String::with_capacity(content.len());
+        for line in content.lines() {
+            match admonitions.process_line(line) {
+                obs_admonitions::ParseOutput::Placeholder { replacement, placeholder } => {
+                    output.push_str(&replacement);
+                    if let Some(ph) = placeholder { 
+                        placeholders.push(ph);
+                    }
+                }, 
+                obs_admonitions::ParseOutput::None => {output.push_str(line)}
+            }
+            output.push('\n');
+        }
+        return output;
     }
 
     fn find_obsidian_links(content: &str) -> Vec<Link> {
@@ -131,7 +173,7 @@ impl<'a> Note<'a> {
     }
 
     fn sanitize(content: &str) -> String {
-        return format_admonitions(&strip_comments(content));
+        return strip_comments(content);
     }
 
     ///Export the current note to a html file at the specified path.
@@ -144,14 +186,19 @@ impl<'a> Note<'a> {
 
         let mut content = self.content.to_owned();
 
-        for placeholder in &self.placeholders {
-            content = content.replace(&placeholder.get_placeholder(), &placeholder.0);
+        for placeholder in self.placeholders.iter().filter(|p| p.before_markdown) {
+            content = content.replace(&placeholder.get_placeholder(), &placeholder.replacement);
         }
 
         content = self.process_links(content);
         content = self.process_tags(content);
+        content = Self::process_headers(content);
 
-        let html_content = markdown_to_html(&content);
+        let mut html_content = markdown_to_html(&content);
+
+        for placeholder in self.placeholders.iter().filter(|p| !p.before_markdown) {
+            html_content = html_content.replace(&placeholder.get_placeholder(), &placeholder.replacement);
+        }
 
         let template_content = HTML_TEMPLATE;
 
@@ -191,20 +238,6 @@ fn strip_comments(note: &str) -> String {
     let mut output = String::with_capacity(note.len());
     for line in note.lines() {
         output.push_str(obs_comments::process_line(line));
-        output.push('\n');
-    }
-    return output;
-}
-
-fn format_admonitions(note: &str) -> String {
-    let mut admonitions = obs_admonitions::AdmonitionParser::new();
-    let mut output = String::with_capacity(note.len());
-    for line in note.lines() {
-        if let Some(new) = admonitions.process_line(line) {
-            output.push_str(new.as_str());
-        } else {
-            output.push_str(line);
-        }
         output.push('\n');
     }
     return output;

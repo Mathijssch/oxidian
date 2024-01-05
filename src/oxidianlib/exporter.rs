@@ -124,7 +124,10 @@ impl<'a> Exporter<'a> {
 
         // Generate backlinks
         info!("Generating backlinks ...");
+        let backlinks_time = std::time::Instant::now();
         let backlinks = self.generate_backlinks();
+        info!("Recovered all backlinks in {:?}", std::time::Instant::now() - backlinks_time);
+
         //println!("{:?}", backlinks);
 
         // TODO: test the compute/memory trade-off between

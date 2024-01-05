@@ -1,21 +1,11 @@
 //use super::errors::MathFindError;
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher}, cmp,
-};
 
-use log::{info,debug};
+use std::cmp;
 
-#[derive(Hash,Debug,PartialEq)]
-pub struct Sanitization(pub String);
+use super::placeholder::Sanitization;
 
-impl Sanitization {
-    pub fn get_placeholder(&self) -> String {
-        let mut hasher = DefaultHasher::new();
-        self.hash(&mut hasher);
-        return format!("{}", hasher.finish());
-    }
-}
+use log::debug;
+
 
 enum MathState {
     ExpectOpen,
@@ -69,7 +59,8 @@ fn find_pairs(content: &str, delim: &DelimPair) -> Vec<Sanitization> {
                         curr_start + index + pattern.len(),
                         content.len()
                     );
-                    result.push(Sanitization(content[start_idx..end_idx].to_owned()));
+                    let to_replace = &content[start_idx..end_idx];
+                    result.push(Sanitization::from(to_replace));
                     state = MathState::ExpectOpen;
                     prev_open = None;
                 }
@@ -98,9 +89,9 @@ pub fn disambiguate_protected(content: &str) -> (String, Vec<Sanitization>) {
     let mut new_string = String::from(content);
     for pair in pairs { 
         let sanitize = find_pairs(&new_string, &pair);
-        for math_element in &sanitize { 
+        for delimited_element in &sanitize { 
             new_string = new_string.replace(
-                &math_element.0, &math_element.get_placeholder()
+                &delimited_element.original, &delimited_element.get_placeholder()
                 );
         }
         result.extend(sanitize);
@@ -121,7 +112,7 @@ mod tests {
     fn run_basic_test(query: &str, solution: Vec<&str>, open_delim: &str, close_delim: &str) {
         let sanitization: Vec<Sanitization> = solution
             .iter()
-            .map(|s| Sanitization(s.to_string()))
+            .map(|s| Sanitization::from(s.to_string()))
             .collect();
         let delimiters = DelimPair::new(open_delim, close_delim);
         let pairs = find_pairs(query, &delimiters);
