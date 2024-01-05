@@ -9,6 +9,7 @@ authors = ["Mathijs Schuurmans <mathijs.schuurmans@gmail.com>"]
 
 [dependencies]
 clap = { version = "4.2.7", features = ["derive"] }
+figment = { version = "0.10.13", features = ["toml"] }
 lazy_static = "1.4.0"
 log = "0.4.20"
 pretty_env_logger = "0.5.0"
