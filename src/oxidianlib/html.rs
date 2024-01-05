@@ -1,5 +1,5 @@
-pub fn wrap_html_raw(content: &str, tag: &str, options: &str) -> String {
-    return format!("<{} {}>{}</{}>", tag, options, content, tag); 
+pub fn wrap_html_raw<T: AsRef<str>, U: AsRef<str>, V: AsRef<str>> (content: T, tag: U, options: V) -> String {
+    return format!("<{} {}>{}</{}>", tag.as_ref(), options.as_ref(), content.as_ref(), tag.as_ref()); 
 }
 
 pub fn video_tag(src: &str) -> String {
