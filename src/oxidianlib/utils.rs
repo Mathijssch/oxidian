@@ -4,7 +4,8 @@ use std::io::Read;
 use pulldown_cmark::html;
 
 use super::{exporter::ExportConfig, errors::ReadConfigError};
-
+use figment::{Figment, providers::{Serialized, Format, Toml}};
+use figment::Error;
 
 //pub fn find_all_occurrences(text: &str, pattern: &str) -> Vec<usize> {
 //    let mut indices = Vec::new();
@@ -60,11 +61,16 @@ pub fn prepend_slash(path: &Path) -> PathBuf {
     slash.join(&path)
 }
 
-pub fn read_config_from_file(config_path: &Path) -> Result<ExportConfig, ReadConfigError<PathBuf>> {
-    let mut file = File::open(config_path).map_err(|_err| ReadConfigError::NoSuchFile(config_path.to_path_buf()))?;
-    let mut buffer = String::new();
-    file.read_to_string(&mut buffer).map_err(|_| ReadConfigError::ReadToString)?;
-    toml::from_str(&buffer).map_err(|_| ReadConfigError::InvalidToml(config_path.to_path_buf()))
+pub fn read_config_from_file(config_path: &Path) -> Result<ExportConfig, Error> {
+    let configuration: ExportConfig = Figment::from(Serialized::defaults(ExportConfig::default()))
+    .merge(Toml::file(config_path))
+    .extract()?;
+    Ok(configuration)
+
+    //let mut file = File::open(config_path).map_err(|_err| ReadConfigError::NoSuchFile(config_path.to_path_buf()))?;
+    //let mut buffer = String::new();
+    //file.read_to_string(&mut buffer).map_err(|_| ReadConfigError::ReadToString)?;
+    //toml::from_str(&buffer).map_err(|_| ReadConfigError::InvalidToml(config_path.to_path_buf()))
 }
 
 

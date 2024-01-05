@@ -9,7 +9,7 @@ lazy_static! {
 
 use super::{errors, note::Note, utils::prepend_slash};
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq, Clone, Eq)]
 pub struct Link {
     pub target: PathBuf,
     pub subtarget: Option<String>,

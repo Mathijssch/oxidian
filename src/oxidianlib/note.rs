@@ -27,6 +27,19 @@ pub struct Note<'a> {
     pub backlinks: Vec<&'a Link>,
 }
 
+
+impl<'a> AsRef<Note<'a>> for Note<'a> {
+    fn as_ref(&self) -> &Note<'a> {
+        &self
+    }
+}
+
+impl<'a> AsMut<Note<'a>> for Note<'a> {
+    fn as_mut(&mut self) -> &mut Note<'a> {
+        self
+    }
+}
+
 impl<'a> Note<'a> {
     fn get_author_prefix(frontmatter: &Yaml) -> Option<String> {
         if let Some(author) = frontmatter["authors"][0].as_str() {
@@ -82,6 +95,38 @@ impl<'a> Note<'a> {
             updated.push('\n');
         }
         return updated;
+    }
+    
+    // Get a raw version of the notes, not meant for postprocessing, just for extraction of
+    // information.
+    pub fn new_raw(path: PathBuf) -> Result<Self, std::io::Error> {
+        let mut content = Self::sanitize(&read_note_from_file(&path)?);
+
+        let frontmatter = match extract_yaml_frontmatter(&content) {
+            Some(fm_content) => {
+                let fm_count = fm_content.lines().count() + 2; // +2 for the surrounding "---"
+                                                               // lines
+                //debug!("Found {} lines of frontmatter in {:?}", fm_count, path);
+                content = utils::remove_first_n_lines(&content, fm_count);
+                parse_frontmatter(&fm_content).ok()
+            }, 
+            None => None
+        };
+
+        let links = Self::find_obsidian_links(&content);
+        let title = Self::get_title(&path, frontmatter.as_ref());
+
+        Ok(Note {
+            path,
+            links,
+            content,
+            title,
+            frontmatter,
+            placeholders: vec![],
+            tags: vec![],
+            backlinks: vec![],
+        })
+
     }
 
     pub fn new(path: PathBuf) -> Result<Self, std::io::Error> {
