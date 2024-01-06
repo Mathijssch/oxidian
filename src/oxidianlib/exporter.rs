@@ -6,8 +6,9 @@ use figment::Error;
 use super::filesys::{convert_path, get_all_notes_exclude};
 use super::link::Link;
 use super::note;
+use super::tag_tree::Tree;
 use serde_derive::{Serialize, Deserialize};
-use std::collections::HashMap;
+use std::collections::{HashMap,HashSet};
 use std::path::{Path, PathBuf};
 
 type Backlinks = HashMap<PathBuf, Vec<Link>>;
@@ -45,6 +46,7 @@ impl Default for ExportConfig {
 pub struct ExportStats {
     note_count: u32,
     attachment_count: u32,
+    tag_count: u32,
     build_time: std::time::Duration,
 }
 
@@ -53,6 +55,7 @@ impl ExportStats {
         ExportStats {
             note_count: 0,
             attachment_count: 0,
+            tag_count: 0,
             build_time: std::time::Duration::new(0, 0),
         }
     }
@@ -119,6 +122,7 @@ impl<'a> Exporter<'a> {
         return backlinks;
     }
 
+    #[allow(dead_code)]
     fn generate_backlinks(&self) -> Backlinks {
         let mut backlinks: Backlinks = HashMap::new();
         let ignore = Self::get_excluded(&self.input_dir, &self.cfg);
@@ -139,6 +143,7 @@ impl<'a> Exporter<'a> {
         result 
     }
 
+    #[allow(dead_code)]
     fn compile_notes(&mut self, backlinks: &Backlinks) {
         let ignored = Self::get_excluded(&self.input_dir, &self.cfg);
         debug!("Ignoring the following directories:\n{:?}", ignored);
@@ -148,22 +153,33 @@ impl<'a> Exporter<'a> {
         }
     }
 
-    //fn compile_single_note(&self, note: &mut note::Note, backlinks: &Backlinks) {
-    //    if let Some(refering_notes) = backlinks.get(&note.path) {
-    //        refering_notes
-    //            .iter()
-    //            .for_each(|refering_note| note.backlinks.push(&refering_note))
-    //    } else {
-    //        debug!("No backlinks to path {:?}", note.path);
-    //    }
-    //    self.compile_note(&note);
-    //    self.stats.note_count += 1;
-    //}
-
     fn compile_notes_from_vec<'b>(&mut self, notes: &mut Vec<note::Note<'b>>, backlinks: &'b Backlinks) {
         for mut note in notes {
             self.compile_note(&mut note, &backlinks);
         }
+    }
+
+    fn initialize_tag_tree() -> Tree { Tree::new("root") }
+
+    ///Generate a tree of tags that occur in the notes. Each node in the tree contains a link
+    ///to the note that mentions that link. 
+    ///TO-DO: Decide whether a note with link #Literature/proceedings should be linked in both
+    ///the `literature` note and the `proceedings` note.
+    fn generate_tag_tree_from_notes<'b>(&self, notes: &Vec<note::Note<'b>>) -> Tree { 
+        let mut tree = Self::initialize_tag_tree(); 
+        for note in notes {
+            let tags = &note.tags;
+            for tag in tags { 
+                let components = tag.tag_path.split('/');
+                if let Some(subtree) = Tree::from_iter_payload(components, 
+                    vec![Link::from_note(&note)]
+                        .into_iter().collect::<HashSet<Link>>()
+                    ) {
+                    tree.add_child(subtree);
+                }
+            }
+        }
+        tree 
     }
 
     pub fn export(&mut self) {
@@ -188,12 +204,15 @@ impl<'a> Exporter<'a> {
         // TODO: test the compute/memory trade-off between
         // * Constructing all the notes at once and collecting the iter
         // * Constructing the iter twice -- i.e., building all the notes twice.
-        // * RESULTS: Generating backlinks is faster by almost a factor 20, but the total time is
-        // not any faster. Probably it's more interesting to check out caching for backlinks, and 
-        // performing partial builds.
+        // * RESULTS: Constructing the notes once results in ~25ms/1000 notes for backlinks
+        // checking. 
         //
         //self.compile_notes(&backlinks);
-        //self.compile_notes(&backlinks);
+
+        if self.cfg.generate_nav || self.cfg.generate_tag_index { 
+            let tags = self.generate_tag_tree_from_notes(&iter_notes);
+        }
+
         self.compile_notes_from_vec(&mut iter_notes, &backlinks);
 
         self.copy_static_files();
