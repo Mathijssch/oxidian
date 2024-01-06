@@ -6,7 +6,6 @@ use log::debug;
 //use super::formatting::link_to_md;
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use super::link::Link;
-use super::load_static::HTML_TEMPLATE;
 use super::placeholder::Sanitization;
 use super::obs_headers::HeaderParser;
 use super::utils::{markdown_to_html, read_note_from_file, self};
@@ -222,7 +221,12 @@ impl<'a> Note<'a> {
     }
 
     ///Export the current note to a html file at the specified path.
-    pub fn to_html(&self, path: &Path) -> Result<(), Error> {
+    pub fn to_html<U: AsRef<str>>(&self, path: &Path, template_content: U) -> Result<(), Error> {
+        self.to_html_inner(path, template_content.as_ref())?;
+        Ok(())
+    }
+
+    fn to_html_inner(&self, path: &Path, template_content: &str) -> Result<(), Error> {
         if let Some(parent_dir) = path.parent() {
             filesys::create_dir_if_not_exists(&parent_dir).unwrap();
         }
@@ -244,8 +248,6 @@ impl<'a> Note<'a> {
         for placeholder in self.placeholders.iter().filter(|p| !p.before_markdown) {
             html_content = html_content.replace(&placeholder.get_placeholder(), &placeholder.replacement);
         }
-
-        let template_content = HTML_TEMPLATE;
 
         let backlinks: Vec<String> = self
             .backlinks

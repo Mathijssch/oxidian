@@ -1,7 +1,8 @@
-use super::html;
+use super::{html, utils};
 use super::link::{Link, LinkType, FileType};
 use super::obs_tags::Tag;
 use super::filesys::convert_path;
+use super::tag_tree::Tree;
 use std::path::Path;
 use super::utils::prepend_slash;
 
@@ -52,10 +53,38 @@ pub fn link_to_md(link: &Link) -> String {
                 FileType::Video => {return html::video_tag(&target_file);},
                 _ => { return md_link(&link_text, &link_target_str) }
             }
-        }, 
-        _ => {return md_link(&link_text, &link_target_str);}
+        } 
+        //_ => {return md_link(&link_text, &link_target_str);}
     };
 }
+
+
+impl Tree {
+ 
+    pub fn to_html<T: AsRef<Path>> (&self, reference_path: T) -> String {
+        self.to_html_inner(false, reference_path.as_ref())
+    }
+
+
+    fn to_html_inner(&self, is_nested: bool, base_path: &Path) -> String {
+        let mut options = "".to_string();
+        if !is_nested {
+            options.push_str("class=\"\"");
+        }
+
+        let curr_page_filename = utils::generate_tag_page_name(&self.name);
+        let curr_page_path = base_path.join(curr_page_filename);
+        let child_basepath = base_path.join(&self.name);
+
+        let ego_entry = html::link(&curr_page_path, &self.name, "");
+        let iter_items = vec![ego_entry].into_iter()
+            .chain(
+                self.children.values().map(|subtree| subtree.to_html_inner(true, &child_basepath))
+        );
+        html::ul(iter_items, &options)
+    }
+}
+
 
 
 #[cfg(test)]

@@ -17,12 +17,14 @@ impl Tree {
         }
     }
 
+
+    /// Add a tree with a single branch, adding the links to the leaf element.
     pub fn from_iter_payload<I, It, S>(branch: I, links: It) -> Option<Self> 
     where I: IntoIterator<Item=S>, 
           S: Into<String>,
-          It: IntoIterator<Item=Link> 
+          It: IntoIterator<Item=Link> + Clone 
     {
-        let mut branch_iter = branch.into_iter();
+        let mut branch_iter = branch.into_iter().peekable();
         let mut tree: Tree; 
         if let Some(first_element) = branch_iter.next() {
             // Initialize the tree.
@@ -31,14 +33,33 @@ impl Tree {
             // Iterator is empty.
             return None;
         }
+
+        // NOTE
+        // The way the links are added to the leaf node is a bit clunky but this is to avoid
+        // interior mutability. Once the leaf subtree is added to the tree, the ownership is moved
+        // there, and we can no longer access our reference to it. An alternative way to do things
+        // would be to implement a way to add links to a descendant of the tree with a given
+        // sequence of names, but this would require another set of iterations through the tree.
+        
+        if branch_iter.peek().is_none() {
+            // No more elements left. 
+            for link in links { 
+                tree.contents.insert(link);
+            }
+            return Some(tree);
+        }
+
         let mut subtree: Tree; 
-        for node in branch_iter {
+        while let Some(node) = branch_iter.next() { 
             subtree = Tree::new(node);
+            if branch_iter.peek().is_none() {
+                // last iteration, first add the links to avoid interior mutability.
+                for link in links.clone() { 
+                    subtree.contents.insert(link);
+                }
+            }
             tree.add_child(subtree);
-        }
-        for link in links { 
-            subtree.add_link(link);
-        }
+            }
         Some(tree)
     }
 
@@ -69,7 +90,8 @@ impl Tree {
         result
     }
 
-    pub fn add_child(&mut self, child: Tree) {
+    /// Add a child to the tree and return a reference to that child.
+    pub fn add_child<'a>(&'a mut self, child: Tree) {
         let name = child.name.to_owned();
         if let Some(previous_child) = self.children.insert(name.clone(), child) {
             // Re-add the already existing grandchildren under the same name.

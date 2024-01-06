@@ -3,7 +3,7 @@ use std::io::Read;
 
 use pulldown_cmark::html;
 
-use super::{exporter::ExportConfig, errors::ReadConfigError};
+use super::exporter::ExportConfig;
 use figment::{Figment, providers::{Serialized, Format, Toml}};
 use figment::Error;
 
@@ -20,6 +20,7 @@ use figment::Error;
 //    indices
 //}
 
+/// Return the contents of a file at path `path` as a String.
 pub fn read_note_from_file<T: AsRef<Path>>(path: T) -> Result<String, std::io::Error> {
     let mut file = File::open(path)?;
     let mut contents = String::new();
@@ -27,6 +28,19 @@ pub fn read_note_from_file<T: AsRef<Path>>(path: T) -> Result<String, std::io::E
     Ok(contents) 
 }
 
+///Create a new path that relates to `new_ref` like `path` does to `original`. 
+///
+///Example 
+///-------
+///```
+///let path = Path::from("indir/subdir/file.txt"); 
+///let base_path = Path::from("indir"); 
+///let new_path = Path::from("outdir");
+///
+///let moved_path = move_to(path, base_path, new_path);
+///assert_eq!(moved_path, Ok(Path::from("outdir/subdir/file.txt")));
+///
+///```
 pub fn move_to(path: &Path, original: &Path, new_ref: &Path) -> Result<PathBuf, std::path::StripPrefixError> {
     let relative_path = path.strip_prefix(original)?;
     Ok(new_ref.join(relative_path))
@@ -38,7 +52,7 @@ pub fn move_to(path: &Path, original: &Path, new_ref: &Path) -> Result<PathBuf, 
 //    Ok(io::BufReader::new(file).lines())
 //}
 
-
+/// Convert a given string containing Markdown content to a html representation.
 pub fn markdown_to_html(markdown: &str) -> String {  
     // Set up options and parser. Strikethroughs are not part of the CommonMark standard
     // and we therefore must enable it explicitly.
@@ -55,12 +69,15 @@ pub fn markdown_to_html(markdown: &str) -> String {
 }
 
 
-// Prepend a slash in front of a path, making it absolute.
+/// Prepend a slash in front of a path, making it absolute.
 pub fn prepend_slash(path: &Path) -> PathBuf {
     let slash = Path::new("/");
     slash.join(&path)
 }
 
+/// Read the configuration of the application from a file at the given location. 
+/// The values from `ExportConfig::default()` is used for the fields that weren't 
+/// specified in the given file.
 pub fn read_config_from_file(config_path: &Path) -> Result<ExportConfig, Error> {
     let configuration: ExportConfig = Figment::from(Serialized::defaults(ExportConfig::default()))
     .merge(Toml::file(config_path))
@@ -74,6 +91,8 @@ pub fn read_config_from_file(config_path: &Path) -> Result<ExportConfig, Error> 
 }
 
 
+/// Remove the first `n` lines from a string. Return a new owned string with the first `n` lines
+/// of `input` removed.
 pub fn remove_first_n_lines(input: &str, n: usize) -> String {
     let mut offset = 0;
     let mut lines = input.lines();
@@ -88,4 +107,10 @@ pub fn remove_first_n_lines(input: &str, n: usize) -> String {
     }
     input[offset..].to_string()
 }
+
+
+pub fn generate_tag_page_name(name: &str) -> PathBuf { 
+    return PathBuf::from(format!("tag-{}.html", name));
+}
+
 

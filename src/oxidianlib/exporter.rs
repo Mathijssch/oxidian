@@ -2,14 +2,16 @@ use crate::oxidianlib::filesys::copy_directory;
 use crate::oxidianlib::utils::move_to;
 use log::{debug, info, warn};
 
-use figment::Error;
 use super::filesys::{convert_path, get_all_notes_exclude};
 use super::link::Link;
-use super::note;
+use super::load_static::HTML_TEMPLATE;
 use super::tag_tree::Tree;
-use serde_derive::{Serialize, Deserialize};
-use std::collections::{HashMap,HashSet};
+use super::{note, utils};
+use figment::Error;
+use serde_derive::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 type Backlinks = HashMap<PathBuf, Vec<Link>>;
 
@@ -19,8 +21,8 @@ pub struct ExportConfig {
     pub attachment_dir: Option<PathBuf>,
     pub template_dir: Option<PathBuf>,
     pub static_dir: Option<PathBuf>,
-    pub generate_nav: bool, 
-    pub generate_tag_index: bool
+    pub generate_nav: bool,
+    pub generate_tag_index: bool,
 }
 
 impl ExportConfig {
@@ -36,8 +38,8 @@ impl Default for ExportConfig {
             attachment_dir: None,
             template_dir: None,
             static_dir: None,
-            generate_nav: true, 
-            generate_tag_index: true, 
+            generate_nav: true,
+            generate_tag_index: true,
         }
     }
 }
@@ -46,7 +48,6 @@ impl Default for ExportConfig {
 pub struct ExportStats {
     note_count: u32,
     attachment_count: u32,
-    tag_count: u32,
     build_time: std::time::Duration,
 }
 
@@ -55,7 +56,6 @@ impl ExportStats {
         ExportStats {
             note_count: 0,
             attachment_count: 0,
-            tag_count: 0,
             build_time: std::time::Duration::new(0, 0),
         }
     }
@@ -76,9 +76,13 @@ pub struct Exporter<'a> {
     output_dir: &'a Path,
     cfg: &'a ExportConfig,
     pub stats: ExportStats,
+    note_template: String,
 }
 
-fn iter_notes<'a, 'b> (input_dir: &Path, ignore: &'a Vec<PathBuf>) -> impl Iterator<Item = note::Note<'b>> + 'a {
+fn iter_notes<'a, 'b>(
+    input_dir: &Path,
+    ignore: &'a Vec<PathBuf>,
+) -> impl Iterator<Item = note::Note<'b>> + 'a {
     let all_paths = get_all_notes_exclude(input_dir, ignore);
     let all_notes = all_paths.filter_map(|note_path| {
         note_path.map_or(None, |path| Some(note::Note::new(path).unwrap()))
@@ -86,7 +90,10 @@ fn iter_notes<'a, 'b> (input_dir: &Path, ignore: &'a Vec<PathBuf>) -> impl Itera
     return all_notes;
 }
 
-fn iter_notes_raw<'a, 'b> (input_dir: &Path, ignore: &'a Vec<PathBuf>) -> impl Iterator<Item = note::Note<'b>> + 'a {
+fn iter_notes_raw<'a, 'b>(
+    input_dir: &Path,
+    ignore: &'a Vec<PathBuf>,
+) -> impl Iterator<Item = note::Note<'b>> + 'a {
     let all_paths = get_all_notes_exclude(input_dir, ignore);
     let all_notes = all_paths.filter_map(|note_path| {
         note_path.map_or(None, |path| Some(note::Note::new_raw(path).unwrap()))
@@ -97,11 +104,13 @@ fn iter_notes_raw<'a, 'b> (input_dir: &Path, ignore: &'a Vec<PathBuf>) -> impl I
 impl<'a> Exporter<'a> {
     pub fn new(input_dir: &'a Path, output_dir: &'a Path, cfg: &'a ExportConfig) -> Self {
         let stats = ExportStats::new();
+        let note_template = HTML_TEMPLATE.to_string();
         Exporter {
             input_dir,
             output_dir,
             cfg,
             stats,
+            note_template,
         }
     }
 
@@ -113,7 +122,7 @@ impl<'a> Exporter<'a> {
                 .push(Link::from_note(&note).set_relative(self.input_dir))
         }
     }
-    
+
     fn generate_backlinks_from_notes(&self, notes: &Vec<note::Note>) -> Backlinks {
         let mut backlinks: Backlinks = HashMap::new();
         for note in notes {
@@ -137,10 +146,16 @@ impl<'a> Exporter<'a> {
 
     fn get_excluded(input_dir: &Path, cfg: &ExportConfig) -> Vec<PathBuf> {
         let mut result = vec![];
-        if let Some(dir) = &cfg.attachment_dir { result.push(input_dir.join(dir)); };
-        if let Some(dir) = &cfg.static_dir { result.push(input_dir.join(dir)); };
-        if let Some(dir) = &cfg.template_dir { result.push(input_dir.join(dir)); };
-        result 
+        if let Some(dir) = &cfg.attachment_dir {
+            result.push(input_dir.join(dir));
+        };
+        if let Some(dir) = &cfg.static_dir {
+            result.push(input_dir.join(dir));
+        };
+        if let Some(dir) = &cfg.template_dir {
+            result.push(input_dir.join(dir));
+        };
+        result
     }
 
     #[allow(dead_code)]
@@ -153,37 +168,58 @@ impl<'a> Exporter<'a> {
         }
     }
 
-    fn compile_notes_from_vec<'b>(&mut self, notes: &mut Vec<note::Note<'b>>, backlinks: &'b Backlinks) {
+    fn compile_notes_from_vec<'b>(
+        &mut self,
+        notes: &mut Vec<note::Note<'b>>,
+        backlinks: &'b Backlinks,
+    ) {
         for mut note in notes {
             self.compile_note(&mut note, &backlinks);
         }
     }
 
-    fn initialize_tag_tree() -> Tree { Tree::new("root") }
+    fn set_tag_nav(&mut self, tree_html: &str) {
+        info!("Trying to replace `{{tag_nav}}` in the template by a tree of tags.");
+        self.note_template = self.note_template.replace("{{tag_nav}}", tree_html);
+    }
+
+    fn initialize_tag_tree() -> Tree {
+        Tree::new("Tags")
+    }
 
     ///Generate a tree of tags that occur in the notes. Each node in the tree contains a link
-    ///to the note that mentions that link. 
+    ///to the note that mentions that link.
     ///TO-DO: Decide whether a note with link #Literature/proceedings should be linked in both
     ///the `literature` note and the `proceedings` note.
-    fn generate_tag_tree_from_notes<'b>(&self, notes: &Vec<note::Note<'b>>) -> Tree { 
-        let mut tree = Self::initialize_tag_tree(); 
+    fn generate_tag_tree_from_notes<'b>(&self, notes: &Vec<note::Note<'b>>) -> Tree {
+        let mut tree = Self::initialize_tag_tree();
         for note in notes {
             let tags = &note.tags;
-            for tag in tags { 
+            for tag in tags {
                 let components = tag.tag_path.split('/');
-                if let Some(subtree) = Tree::from_iter_payload(components, 
+                if let Some(subtree) = Tree::from_iter_payload(
+                    components,
                     vec![Link::from_note(&note)]
-                        .into_iter().collect::<HashSet<Link>>()
-                    ) {
+                        .into_iter()
+                        .collect::<HashSet<Link>>(),
+                ) {
                     tree.add_child(subtree);
                 }
             }
         }
-        tree 
+        tree
+    }
+
+    fn load_template(&self) -> Option<String> {
+        if let Some(dir) = &self.cfg.template_dir {
+            let template_path = dir.join("index.html");
+            return utils::read_note_from_file(template_path).ok();
+        }
+        None
     }
 
     pub fn export(&mut self) {
-        let start = std::time::Instant::now();
+        let start = Instant::now();
         debug!(
             "Start export with configuration\n{}\n{:?}\n{}",
             "-".repeat(30),
@@ -191,26 +227,58 @@ impl<'a> Exporter<'a> {
             "-".repeat(30)
         );
 
-        // Generate backlinks
+        // List the notes
+        // ----------------
+        info!("Listing all the notes in {:?}", self.input_dir);
+        let mut subtime = Instant::now();
         let ignored = Self::get_excluded(&self.input_dir, &self.cfg);
         debug!("Ignoring the following directories:\n{:?}", ignored);
         let mut iter_notes: Vec<note::Note> = iter_notes(&self.input_dir, &ignored).collect();
+        info!("Loaded all notes in {:?}", Instant::now() - subtime);
+
+        // Generate backlinks
+        // -----------------
         info!("Generating backlinks ...");
-        let backlinks_time = std::time::Instant::now();
+        subtime = Instant::now();
         //let backlinks = self.generate_backlinks();
         let backlinks = self.generate_backlinks_from_notes(&iter_notes);
-        info!("Recovered all backlinks in {:?}", std::time::Instant::now() - backlinks_time);
+        info!("Recovered all backlinks in {:?}", Instant::now() - subtime);
 
         // TODO: test the compute/memory trade-off between
         // * Constructing all the notes at once and collecting the iter
         // * Constructing the iter twice -- i.e., building all the notes twice.
         // * RESULTS: Constructing the notes once results in ~25ms/1000 notes for backlinks
-        // checking. 
+        // checking.
         //
         //self.compile_notes(&backlinks);
 
-        if self.cfg.generate_nav || self.cfg.generate_tag_index { 
+        // Generate a tree of tags used in the notes
+        // -----------------------------------------
+        let mut tag_tree_html = None;
+        if self.cfg.generate_nav || self.cfg.generate_tag_index {
+            info!("Generating tree of tags ...");
+            subtime = Instant::now();
             let tags = self.generate_tag_tree_from_notes(&iter_notes);
+            info!("Constructed tree of tags in {:?}", Instant::now() - subtime);
+
+            subtime = Instant::now();
+            tag_tree_html = Some(tags.to_html(self.get_tags_directory()));
+            info!(
+                "Generated html for tag nav tree {:?}",
+                Instant::now() - subtime
+            );
+        }
+
+        // Load the template
+        // -----------------
+        if let Some(template_from_file) = self.load_template() { 
+            self.note_template = template_from_file;
+        };
+
+        // Add tree_html to template
+        // mutates the template.
+        if let Some(tree_html) = tag_tree_html {
+            self.set_tag_nav(&tree_html);
         }
 
         self.compile_notes_from_vec(&mut iter_notes, &backlinks);
@@ -218,6 +286,10 @@ impl<'a> Exporter<'a> {
         self.copy_static_files();
 
         self.stats.build_time = start.elapsed();
+    }
+
+    fn get_tags_directory(&self) -> PathBuf {
+        self.output_dir.join("tags")
     }
 
     fn copy_static_files(&self) {
@@ -235,7 +307,11 @@ impl<'a> Exporter<'a> {
         }
     }
 
-    fn add_backlinks_to_note<'b>(&mut self, new_note: &mut note::Note<'b>, backlinks: &'b Backlinks){ 
+    fn add_backlinks_to_note<'b>(
+        &mut self,
+        new_note: &mut note::Note<'b>,
+        backlinks: &'b Backlinks,
+    ) {
         if let Some(refering_notes) = backlinks.get(&new_note.path) {
             refering_notes
                 .iter()
@@ -259,8 +335,9 @@ impl<'a> Exporter<'a> {
         for link in &new_note.links {
             self.transfer_linked_file(&link);
         }
+
         new_note
-            .to_html(&output_path)
+            .to_html(&output_path, &self.note_template)
             .expect("Failed to export note");
 
         self.stats.note_count += 1;
