@@ -105,6 +105,17 @@ impl Link {
         self
     }
 
+
+    pub fn new<N: Into<String>, T: Into<PathBuf>>(name: N, target: T) -> Self {
+        Self {
+            target: target.into(), 
+            subtarget: None, 
+            alias: Some(name.into()),
+            source_string: "".to_string(),
+            is_attachment: false
+        }
+    }
+
     pub fn from_note(note: &Note) -> Self {
         Link {
             target: note.path.clone(),
@@ -112,6 +123,13 @@ impl Link {
             alias: Some(note.title.clone()), 
             source_string: "".to_string(), 
             is_attachment: false
+        }
+    }
+
+    pub fn link_text(&self) -> String {
+        match &self.alias {
+            Some(alias) => alias.clone(),
+            None => self.target.to_string_lossy().to_string()
         }
     }
 

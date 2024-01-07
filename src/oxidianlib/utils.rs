@@ -28,6 +28,14 @@ pub fn read_note_from_file<T: AsRef<Path>>(path: T) -> Result<String, std::io::E
     Ok(contents) 
 }
 
+
+///Get the first char in a string if there is one, else return space.
+///The default is an arbitrary value which we don't expect in practice. 
+pub fn initial<T: AsRef<str>>(text: T) -> char {
+    if let Some(initial) = text.as_ref().chars().next() { initial } 
+    else { ' ' }
+}
+
 ///Create a new path that relates to `new_ref` like `path` does to `original`. 
 ///
 ///Example 

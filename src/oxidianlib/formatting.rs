@@ -1,4 +1,7 @@
-use super::{html, utils};
+use log::info;
+use super::{html, utils, filesys, link};
+use std::fs::File;
+use std::io::Write;
 use super::link::{Link, LinkType, FileType};
 use super::obs_tags::Tag;
 use super::filesys::convert_path;
@@ -82,6 +85,113 @@ impl Tree {
                 self.children.values().map(|subtree| subtree.to_html_inner(true, &child_basepath))
         );
         html::ul(iter_items, &options)
+    }
+    
+    // Generate the html for the index page
+    fn to_html_index(&self, parent_tags: &Vec<&Link>) -> String {
+        let mut html_content = html::HtmlTag::header(1).wrap(format!("Index of {}", self.name));
+        
+        // Links to subtags
+        { 
+            let links_to_subtags = parent_tags.iter()
+                .map(|link| html::link(&link.target, &link.link_text(), ""))
+                .chain(vec![self.name.to_string()].into_iter()); 
+
+            let breadcrumbs = html::ul( links_to_subtags, "class=\"breadcrumbs\"");
+            html_content.push_str(&breadcrumbs);
+        }
+
+        let mut sorted_links: Vec<&Link> = self.contents.iter().collect();
+        sorted_links.sort_unstable_by_key(|link| link.link_text());
+
+        let mut letter: Option<char> = None;
+        let mut li_notes_per_letter = "".to_string();
+        for link in sorted_links {
+            let new_initial = match letter {
+                Some(l) => l.to_lowercase().ne(utils::initial(link.link_text()).to_lowercase()),
+                None    => true
+            };
+            if new_initial {
+                if letter.is_some() { // Already covered a letter, so flush the list of notes.
+                    html_content.push_str(
+                        &html::HtmlTag::div().with_class("tag_list_wrapper")
+                            .wrap(
+                            &html::HtmlTag::ul()
+                            .with_class("tag_list")
+                            .wrap( li_notes_per_letter )
+                        )
+                    );
+                    li_notes_per_letter = "".to_string();
+                }
+                let curr_initial = utils::initial(link.link_text());
+                letter = Some(curr_initial);
+                let h2 = html::HtmlTag::header(2).wrap(curr_initial);
+                html_content.push_str(&h2);
+            }
+            
+            li_notes_per_letter.push_str(
+                &html::HtmlTag::li().wrap(
+                    &html::link(&link.target, &link.link_text(), "")
+                )
+            );
+        }
+        return html_content;
+    }
+
+    pub fn build_index_pages(&self, base_path: &Path, template: &str) -> std::io::Result<()> {
+        // Generate the html for its own page.
+        let parent_tags = vec![];
+        for child in self.children.values() { 
+            child.inner_build_index_pages(base_path, &parent_tags, template)?;
+        }
+        Ok(())
+    }
+
+    pub fn inner_build_index_pages(
+        &self,
+        base_path: &Path, 
+        inner_tags: &Vec<&Link>,
+        template: &str
+    ) -> std::io::Result<()> 
+    {
+        let mut directory = base_path.to_owned(); 
+        for tag in inner_tags { 
+            directory = directory.join(tag.link_text());
+        }
+        filesys::create_dir_if_not_exists(&directory)?; 
+        
+        // Generate the html for its own page. 
+        let html_content = self.to_html_index(&inner_tags);
+
+        let curr_page_filename = utils::generate_tag_page_name(&self.name);
+        let curr_page_path = base_path.join(curr_page_filename);
+        //let child_basepath = base_path.join(&self.name);
+
+        let file = File::create(&curr_page_path)?;
+        info!("Writing tag page {:?}", curr_page_path);
+        let mut writer = std::io::BufWriter::new(file);
+        let parent_tag_names: Vec<String> = inner_tags.iter().map(
+            |t| t.link_text()
+        ).collect();
+        // Title and header 
+        let title = format!("Tag - {} / {}", parent_tag_names.join(" / "), self.name);
+        let html = template.replace("{{content}}", &html_content)
+            .replace("{{backlinks}}", "")
+            .replace("{{title}}", &title);
+
+        writer.write_all(html.as_bytes())?;
+
+        let mut inner_tags = inner_tags.clone();
+        let link_to_self = Link::new(self.name.clone(), curr_page_path);
+        inner_tags.push(&link_to_self);
+        for child in self.children.values() {
+            child.inner_build_index_pages(
+                base_path, 
+                &inner_tags, 
+                template
+            )?;
+        }
+        Ok(())
     }
 }
 

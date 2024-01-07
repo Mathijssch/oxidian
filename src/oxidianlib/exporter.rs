@@ -251,41 +251,55 @@ impl<'a> Exporter<'a> {
         // checking.
         //
         //self.compile_notes(&backlinks);
-
-        // Generate a tree of tags used in the notes
-        // -----------------------------------------
-        let mut tag_tree_html = None;
-        if self.cfg.generate_nav || self.cfg.generate_tag_index {
-            info!("Generating tree of tags ...");
-            subtime = Instant::now();
-            let tags = self.generate_tag_tree_from_notes(&iter_notes);
-            info!("Constructed tree of tags in {:?}", Instant::now() - subtime);
-
-            subtime = Instant::now();
-            tag_tree_html = Some(tags.to_html(self.get_tags_directory()));
-            info!(
-                "Generated html for tag nav tree {:?}",
-                Instant::now() - subtime
-            );
-        }
-
+        
         // Load the template
         // -----------------
         if let Some(template_from_file) = self.load_template() { 
             self.note_template = template_from_file;
         };
 
-        // Add tree_html to template
-        // mutates the template.
-        if let Some(tree_html) = tag_tree_html {
-            self.set_tag_nav(&tree_html);
+        // Generate a tree of tags used in the notes
+        // -----------------------------------------
+        if self.cfg.generate_nav || self.cfg.generate_tag_index {
+            self.process_tags_from_vec(&iter_notes);
         }
+
+        // Compile the notes
+        // -----------------
 
         self.compile_notes_from_vec(&mut iter_notes, &backlinks);
 
+        // Copy over all the static files 
+        // ------------------------------
         self.copy_static_files();
 
+        // ALL DONE  ----------------------------------
         self.stats.build_time = start.elapsed();
+    }
+
+    fn process_tags_from_vec(&mut self, notes: &Vec<note::Note>) {
+        info!("Generating tree of tags ...");
+        let mut subtime = Instant::now();
+        let tags = self.generate_tag_tree_from_notes(&notes);
+        info!("Constructed tree of tags in {:?}", Instant::now() - subtime);
+
+        if self.cfg.generate_nav { 
+            subtime = Instant::now();
+            let tag_tree_html = tags.to_html(self.get_tags_directory());
+            info!(
+                "Generated html for tag nav tree {:?}",
+                Instant::now() - subtime
+            );
+            self.set_tag_nav(&tag_tree_html);
+        }
+        if self.cfg.generate_tag_index {
+            self.generate_tag_indices(&tags);
+        }
+
+    }
+
+    fn generate_tag_indices(&self, tags: &Tree) {
+        tags.build_index_pages(&self.get_tags_directory(), &self.note_template);
     }
 
     fn get_tags_directory(&self) -> PathBuf {
