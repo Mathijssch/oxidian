@@ -6,7 +6,7 @@ use super::link::{Link, LinkType, FileType};
 use super::obs_tags::Tag;
 use super::filesys::convert_path;
 use super::tag_tree::Tree;
-use std::path::Path;
+use std::path::{PathBuf,Path};
 use super::utils::prepend_slash;
 
 fn md_link(text: &str, target: &str) -> String {
@@ -75,16 +75,22 @@ impl Tree {
             options.push_str("class=\"\"");
         }
 
-        let curr_page_filename = utils::generate_tag_page_name(&self.name);
-        let curr_page_path = base_path.join(curr_page_filename);
-        let child_basepath = base_path.join(&self.name);
+        let mut child_basepath = base_path.to_owned();
+        let mut ego_entry = self.name.clone();
 
-        let ego_entry = html::link(&curr_page_path, &self.name, "");
-        let iter_items = vec![ego_entry].into_iter()
-            .chain(
-                self.children.values().map(|subtree| subtree.to_html_inner(true, &child_basepath))
-        );
-        html::ul(iter_items, &options)
+        if is_nested { 
+            let curr_page_filename = utils::generate_tag_page_name(&self.name);
+            let curr_page_path = base_path.join(curr_page_filename);
+            child_basepath.push(&self.name);
+            ego_entry = html::link(utils::prepend_slash(&curr_page_path).as_path(), &self.name, "");
+        }
+
+        if !self.is_leaf() {
+            // expand recursively 
+            let sublist = self.children.values().map(|subtree| subtree.to_html_inner(true, &child_basepath));
+            ego_entry.push_str(&html::ul(sublist, &options));
+        }
+        return ego_entry
     }
     
     // Generate the html for the index page
@@ -102,7 +108,7 @@ impl Tree {
         }
 
         let mut sorted_links: Vec<&Link> = self.contents.iter().collect();
-        sorted_links.sort_unstable_by_key(|link| link.link_text());
+            sorted_links.sort_unstable_by_key(|link| link.link_text());
 
         let mut letter: Option<char> = None;
         let mut li_notes_per_letter = "".to_string();
@@ -138,37 +144,60 @@ impl Tree {
         return html_content;
     }
 
-    pub fn build_index_pages(&self, base_path: &Path, template: &str) -> std::io::Result<()> {
+    pub fn build_index_pages(
+        &self, output_path: &Path, 
+        base_path: &Path, template: &str
+    ) -> std::io::Result<()> {
         // Generate the html for its own page.
         let parent_tags = vec![];
         for child in self.children.values() { 
-            child.inner_build_index_pages(base_path, &parent_tags, template)?;
+            child.inner_build_index_pages(output_path, base_path, &parent_tags, template)?;
         }
         Ok(())
     }
 
+    fn prepare_directory(base_path: &Path, parent_tags: &Vec<&Link>) -> std::io::Result<PathBuf> {
+        //let mut directory = base_path.to_owned(); 
+        //for tag in parent_tags { 
+        //    directory = directory.join(tag.link_text());
+        //}
+        let mut dir = PathBuf::new();
+        if let Some(parent) = parent_tags.last() {
+            if let Some(parents_subpath) = parent.target.parent() {
+                dir.push(parents_subpath
+                    .strip_prefix(utils::prepend_slash(base_path))
+                    .unwrap()
+                );
+            } 
+            dir.push(parent.link_text());
+        }
+        Ok(dir)
+    }
+
     pub fn inner_build_index_pages(
         &self,
+        output_path: &Path,
         base_path: &Path, 
         inner_tags: &Vec<&Link>,
         template: &str
     ) -> std::io::Result<()> 
     {
-        let mut directory = base_path.to_owned(); 
-        for tag in inner_tags { 
-            directory = directory.join(tag.link_text());
-        }
-        filesys::create_dir_if_not_exists(&directory)?; 
-        
+
+        let rel_dir = Self::prepare_directory(&base_path, &inner_tags)?;
+ 
         // Generate the html for its own page. 
-        let html_content = self.to_html_index(&inner_tags);
+        let html_content = self.to_html_index(inner_tags);
 
         let curr_page_filename = utils::generate_tag_page_name(&self.name);
-        let curr_page_path = base_path.join(curr_page_filename);
-        //let child_basepath = base_path.join(&self.name);
+        let relative_page_path = base_path.join(rel_dir.join(curr_page_filename));
+        let absolute_page_dir  = output_path.join(&rel_dir);
+        let absolute_page_path = output_path.join(&relative_page_path); 
 
-        let file = File::create(&curr_page_path)?;
-        info!("Writing tag page {:?}", curr_page_path);
+        info!("Making directory {:?}", absolute_page_dir);
+        info!("Relative directory {:?}", relative_page_path);
+        filesys::create_dir_if_not_exists(&absolute_page_dir)?;
+        let file = File::create(&absolute_page_path)?;
+        info!("Writing tag page {:?}", absolute_page_path);
         let mut writer = std::io::BufWriter::new(file);
         let parent_tag_names: Vec<String> = inner_tags.iter().map(
             |t| t.link_text()
@@ -182,11 +211,13 @@ impl Tree {
         writer.write_all(html.as_bytes())?;
 
         let mut inner_tags = inner_tags.clone();
-        let link_to_self = Link::new(self.name.clone(), curr_page_path);
+        let link_to_self = Link::new(self.name.clone(), utils::prepend_slash(&relative_page_path));
+        info!("Passing link target: {:?}", link_to_self.target);
         inner_tags.push(&link_to_self);
         for child in self.children.values() {
             child.inner_build_index_pages(
-                base_path, 
+                &output_path,
+                &base_path, 
                 &inner_tags, 
                 template
             )?;

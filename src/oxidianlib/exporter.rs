@@ -299,11 +299,15 @@ impl<'a> Exporter<'a> {
     }
 
     fn generate_tag_indices(&self, tags: &Tree) {
-        tags.build_index_pages(&self.get_tags_directory(), &self.note_template);
+        tags.build_index_pages(
+            &self.output_dir,
+            &self.get_tags_directory(),
+            &self.note_template
+        ).unwrap();
     }
 
     fn get_tags_directory(&self) -> PathBuf {
-        self.output_dir.join("tags")
+        PathBuf::from("tags")
     }
 
     fn copy_static_files(&self) {
