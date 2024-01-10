@@ -1,10 +1,10 @@
-use log::info;
-use super::{html, utils, filesys, link};
+use log::{debug, info};
+use super::{html, utils, filesys};
 use std::fs::File;
 use std::io::Write;
 use super::link::{Link, LinkType, FileType};
 use super::obs_tags::Tag;
-use super::filesys::convert_path;
+use super::filesys::slugify_path;
 use super::tag_tree::Tree;
 use std::path::{PathBuf,Path};
 use super::utils::prepend_slash;
@@ -18,10 +18,18 @@ pub fn tag_to_md(tag: &Tag) -> String {
     return html::wrap_html_raw(&tag.tag_path, "span", "class=\"tag\"");
 }
 
-pub fn link_to_md(link: &Link) -> String {
+pub fn link_to_html(link: &Link) -> String { render_link(link, true) }
+pub fn link_to_md(link: &Link) -> String { render_link(link, false) }
 
-    //println!("Converting link {:?}", link);
-    //println!("Link has type {:?}", link.link_type());
+fn render_link_aux(tg: &str, text: &str, to_html: bool) -> String {
+    match to_html {
+        true => html::link(tg, text, ""),
+        false => md_link(text, tg)
+    }
+}
+
+/// Render link to string 
+fn render_link(link: &Link, to_html: bool) -> String { 
 
     let link_target_str = link.target.to_string_lossy().to_string();
     let link_text = link.alias.as_ref().unwrap_or_else(|| &link_target_str );
@@ -29,32 +37,34 @@ pub fn link_to_md(link: &Link) -> String {
     match link.link_type() {
         LinkType::Note => {
             // Link to note should point to html page.
-            let target_rel = convert_path(&Path::new(&link.target), Some("html")).unwrap();
+            let target_rel = slugify_path(&Path::new(&link.target), Some("html")).unwrap();
             let mut target_abs = prepend_slash(&target_rel)
                 .to_string_lossy()
                 .to_string();
             if let Some(subtarget) = &link.subtarget {
                 target_abs.push_str("#");
                 target_abs.push_str(subtarget);
-            } return md_link(&link_text, &target_abs); },
+            } 
+            return render_link_aux(&target_abs, &link_text, to_html);
+        },
         LinkType::Internal => {
             let mut target_abs = "".to_string();
             if let Some(subtarget) = &link.subtarget {
                 target_abs.push_str("#");
                 target_abs.push_str(subtarget);
             } 
-            return md_link(&link_text, &target_abs); 
+            return render_link_aux(&target_abs, &link_text, to_html);
         },
         LinkType::External => {return md_link(&link_text, &link_target_str);},
         LinkType::Attachment(filetype) => {
-            let target_rel = convert_path(&link.target, None).unwrap();
+            let target_rel = slugify_path(&link.target, None).unwrap();
             let target_file = prepend_slash(&target_rel)
                 .to_string_lossy()
                 .to_string();
             match filetype {
                 FileType::Image => {return html::img_tag(&target_file)},
                 FileType::Video => {return html::video_tag(&target_file);},
-                _ => { return md_link(&link_text, &link_target_str) }
+                _ => { return render_link_aux(&link_target_str, &link_text, to_html); }
             }
         } 
         //_ => {return md_link(&link_text, &link_target_str);}
@@ -135,9 +145,12 @@ impl Tree {
                 html_content.push_str(&h2);
             }
             
+            info!("Adding link       {:?} of type {:?}", link, link.link_type());
+            info!("Gets converted to {:?}", link_to_html(&link));
             li_notes_per_letter.push_str(
                 &html::HtmlTag::li().wrap(
-                    &html::link(&link.target, &link.link_text(), "")
+                    link_to_html(&link)
+                    //&html::link(&link.target, &link.link_text(), "")
                 )
             );
         }
@@ -190,12 +203,15 @@ impl Tree {
 
         let curr_page_filename = utils::generate_tag_page_name(&self.name);
         let relative_page_path = base_path.join(rel_dir.join(curr_page_filename));
-        let absolute_page_dir  = output_path.join(&rel_dir);
+        //let absolute_page_dir  = output_path.join(&rel_dir);
         let absolute_page_path = output_path.join(&relative_page_path); 
 
-        info!("Making directory {:?}", absolute_page_dir);
-        info!("Relative directory {:?}", relative_page_path);
-        filesys::create_dir_if_not_exists(&absolute_page_dir)?;
+        //info!("Relative path {:?}", relative_page_path);
+        if let Some(parent_dir) = absolute_page_path.parent() {
+            info!("Making directory {:?}", parent_dir);
+            filesys::create_dir_if_not_exists(&parent_dir)?;
+        }
+        //info!("Now creating file {:?}", absolute_page_path);
         let file = File::create(&absolute_page_path)?;
         info!("Writing tag page {:?}", absolute_page_path);
         let mut writer = std::io::BufWriter::new(file);
@@ -212,7 +228,6 @@ impl Tree {
 
         let mut inner_tags = inner_tags.clone();
         let link_to_self = Link::new(self.name.clone(), utils::prepend_slash(&relative_page_path));
-        info!("Passing link target: {:?}", link_to_self.target);
         inner_tags.push(&link_to_self);
         for child in self.children.values() {
             child.inner_build_index_pages(
@@ -240,7 +255,7 @@ mod tests {
     }
 
     fn create_note_link() -> TestCase {
-        let slug_name = convert_path(Path::new("path_to_note"), Some("html"))
+        let slug_name = slugify_path(Path::new("path_to_note"), Some("html"))
             .unwrap()
             .to_string_lossy()
             .to_string();
@@ -250,7 +265,7 @@ mod tests {
         }
     }
     fn create_note_in_dir_link() -> TestCase {
-        let slug_name = convert_path(Path::new("subdir/path_to_note"), Some("html"))
+        let slug_name = slugify_path(Path::new("subdir/path_to_note"), Some("html"))
             .unwrap()
             .to_string_lossy()
             .to_string();
@@ -260,7 +275,7 @@ mod tests {
         }
     }
     fn create_note_in_dir_sublink() -> TestCase {
-        let slug_name = convert_path(Path::new("subdir/path_to_note"), Some("html"))
+        let slug_name = slugify_path(Path::new("subdir/path_to_note"), Some("html"))
             .unwrap()
             .to_string_lossy()
             .to_string();
@@ -270,7 +285,7 @@ mod tests {
         }
     }
     fn create_image_link() -> TestCase {
-        let slug_name = convert_path(Path::new("path_to_image.png"), None)
+        let slug_name = slugify_path(Path::new("path_to_image.png"), None)
             .unwrap()
             .to_string_lossy()
             .to_string();

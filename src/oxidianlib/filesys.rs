@@ -10,6 +10,10 @@ use walkdir::WalkDir;
 pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
     //let path = std::path::Path::new(dir_path);
     //
+    if path.components().count() == 0 { 
+        warn!("Trying to create empty path {:?}", path);
+        return Ok(()); 
+    };
     if !path.exists() {
         match fs::create_dir_all(path) {
             Ok(_) => {
@@ -75,29 +79,27 @@ pub fn get_all_notes_exclude<'a>(path: &Path, ignore: &'a Vec<PathBuf>) -> impl 
 /// * The given extension, 
 /// * The original extension
 ///
-pub fn convert_path<'a> (path: &'a Path, extension: Option<&str>) -> Result<PathBuf, NotePathError<&'a Path>> {
+pub fn slugify_path<'a> (path: &'a Path, extension: Option<&str>) -> Result<PathBuf, NotePathError<&'a Path>> {
     let ext = match extension {
         Some(e) => Some(OsStr::new(e)),
         None => {path.extension()}
     };
-    //let extension = path.extension().ok_or_else(err)
-    let stem = path.file_stem()
-        .ok_or_else(| | NotePathError::NoStem(path))?
-        .to_str()
-        .ok_or_else(|| NotePathError::InvalidUTF8(path))?;
 
-    let mut slug = slugify!(stem);
+    let mut output_path = PathBuf::new();
+
+    for component in path.with_extension("").components() {
+        match component {
+            std::path::Component::Normal(os_str) => {
+                output_path.push(slugify!(&os_str.to_string_lossy().as_ref()));
+            },
+            _ => {} // Ignore other components like RootDir, Prefix, etc.
+        }
+    }
     
     if let Some(ext) = ext {
-        slug.push_str(".");
-        slug.push_str(&ext.to_string_lossy());
+        output_path = output_path.with_extension(ext);
     }
-
-    if let Some(directory) = path.parent() {
-        let output_path = directory.join(slug).to_path_buf();
-        return Ok(output_path);
-    }
-    Ok(PathBuf::from(slug))
+    Ok(output_path)
 }
 
 pub fn copy_directory<U: AsRef<Path>, T: AsRef<Path>>(src: U, dest: T) -> io::Result<()> {

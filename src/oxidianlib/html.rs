@@ -1,4 +1,5 @@
 use std::collections::{BTreeSet, BTreeMap};
+use std::path::Path;
 
 /// General utility function to wrap a given string into a html tag.
 pub fn wrap_html_raw<T: AsRef<str>, U: AsRef<str>, V: AsRef<str>>(
@@ -26,11 +27,11 @@ pub fn img_tag(src: &str) -> String {
 }
 
 /// Generate a html link to the given path, with the given `text` as alias.
-pub fn link(dst: &std::path::Path, text: &str, options: &str) -> String {
+pub fn link<T: AsRef<Path>>(dst: T, text: &str, options: &str) -> String {
     wrap_html_raw(
         text,
         "a",
-        &format!("href={} {}", dst.to_string_lossy(), options),
+        &format!("href=\"{}\" {}", dst.as_ref().to_string_lossy(), options),
     )
 }
 

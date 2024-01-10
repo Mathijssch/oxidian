@@ -254,7 +254,7 @@ impl<'a> Note<'a> {
             .iter()
             .map(|link| {
                 html::link(
-                    &filesys::convert_path(&link.target, Some("html")).unwrap(),
+                    &filesys::slugify_path(&link.target, Some("html")).unwrap(),
                     &link.alias.clone().unwrap(),
                     "",
                 )

@@ -78,9 +78,9 @@ pub fn markdown_to_html(markdown: &str) -> String {
 
 
 /// Prepend a slash in front of a path, making it absolute.
-pub fn prepend_slash(path: &Path) -> PathBuf {
+pub fn prepend_slash<T: AsRef<Path>>(path: T) -> PathBuf {
     let slash = Path::new("/");
-    slash.join(&path)
+    slash.join(path.as_ref())
 }
 
 /// Read the configuration of the application from a file at the given location. 

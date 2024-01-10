@@ -2,7 +2,7 @@ use crate::oxidianlib::filesys::copy_directory;
 use crate::oxidianlib::utils::move_to;
 use log::{debug, info, warn};
 
-use super::filesys::{convert_path, get_all_notes_exclude};
+use super::filesys::{slugify_path, get_all_notes_exclude};
 use super::link::Link;
 use super::load_static::HTML_TEMPLATE;
 use super::tag_tree::Tree;
@@ -199,7 +199,7 @@ impl<'a> Exporter<'a> {
                 let components = tag.tag_path.split('/');
                 if let Some(subtree) = Tree::from_iter_payload(
                     components,
-                    vec![Link::from_note(&note)]
+                    vec![Link::from_note(&note).set_relative(self.input_dir)]
                         .into_iter()
                         .collect::<HashSet<Link>>(),
                 ) {
@@ -287,7 +287,7 @@ impl<'a> Exporter<'a> {
             subtime = Instant::now();
             let tag_tree_html = tags.to_html(self.get_tags_directory());
             info!(
-                "Generated html for tag nav tree {:?}",
+                "Generated html for tag nav tree in {:?}",
                 Instant::now() - subtime
             );
             self.set_tag_nav(&tag_tree_html);
@@ -303,7 +303,7 @@ impl<'a> Exporter<'a> {
             &self.output_dir,
             &self.get_tags_directory(),
             &self.note_template
-        ).unwrap();
+        ).expect("Failed to generate tag index pages");
     }
 
     fn get_tags_directory(&self) -> PathBuf {
@@ -344,10 +344,10 @@ impl<'a> Exporter<'a> {
 
         self.add_backlinks_to_note(new_note, backlinks);
 
-        let output_file = convert_path(&new_note.path, Some("html"))
+        let mut output_path = move_to(&new_note.path, &self.input_dir, &self.output_dir)
+            .unwrap_or(self.output_dir.join(&new_note.path));
+        output_path = slugify_path(&output_path, Some("html"))
             .expect("Could not convert the note path to a valid HTML path.");
-        let output_path = move_to(&output_file, &self.input_dir, &self.output_dir)
-            .unwrap_or(self.output_dir.join(output_file));
         debug!("exporting to {:?}", output_path);
 
         for link in &new_note.links {
@@ -363,42 +363,23 @@ impl<'a> Exporter<'a> {
 
     fn transfer_linked_file(&mut self, link: &Link) {
         // Only move linked attachments
-        if link.is_attachment {
-            let output_file = convert_path(&link.target, None).unwrap();
-            let output_path = move_to(&output_file, &self.input_dir, &self.output_dir)
-                .unwrap_or(self.output_dir.join(output_file));
+        if !link.is_attachment { return; }
 
-            // Note on the code duplication below.
-            // --------
-            // We would ideally like to define a variable `input_path`
-            // to be equal to `attachment_dir/link.target`, if `attachment_dir`
-            // is not None. However, this potentially introduces an unnecessary clone.
-            // The reason is that we only need a reference to this value for the
-            // copy that happens afterwards.
-            // However, we can not set input_path equal to a reference to
-            // a file that is locally defined and thus immediately goes out of scope.
-            // The only alternative is then to make a clone and make input_path
-            // a `PathBuf`.
-            // Maybe there is some macro magic that could be done here to avoid the
-            // duplicate `copy` call, but this is not worth it in this case.
-            if let Some(attachment_dir) = &self.cfg.attachment_dir {
-                let input_path = self.input_dir.join(attachment_dir.join(&link.target));
-                if let Err(err) = std::fs::copy(&input_path, &output_path) {
-                    warn!(
-                        "Could not copy the attachment from {:?} to {:?}! Got error {:?}",
-                        input_path, output_path, err
-                    );
-                }
-            } else {
-                let input_path = self.input_dir.join(&link.target);
-                if let Err(err) = std::fs::copy(&input_path, &output_path) {
-                    warn!(
-                        "Could not copy the attachment from {:?} to {:?}! Got error {:?}",
-                        input_path, output_path, err
-                    );
-                }
-            }
-            self.stats.attachment_count += 1;
+        let mut output_path = move_to(&link.target, &self.input_dir, &self.output_dir)
+            .unwrap_or(self.output_dir.join(&link.target));
+        output_path = slugify_path(&output_path, None).unwrap();
+
+        let input_path = match &self.cfg.attachment_dir {
+            Some(attachment_dir) => self.input_dir.join(attachment_dir.join(&link.target)),
+            None => self.input_dir.join(&link.target)
+        };
+
+        if let Err(err) = std::fs::copy(&input_path, &output_path) {
+            warn!(
+                "Could not copy the attachment from {:?} to {:?}! Got error {:?}",
+                input_path, output_path, err
+            );
         }
+        self.stats.attachment_count += 1;
     }
 }
