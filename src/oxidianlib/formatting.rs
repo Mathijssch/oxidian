@@ -57,7 +57,7 @@ fn render_link(link: &Link, to_html: bool) -> String {
         },
         LinkType::External => {return md_link(&link_text, &link_target_str);},
         LinkType::Attachment(filetype) => {
-            let target_rel = slugify_path(&link.target, None).unwrap();
+            let target_rel  = slugify_path(&link.target, None).unwrap();
             let target_file = prepend_slash(&target_rel)
                 .to_string_lossy()
                 .to_string();
@@ -102,6 +102,18 @@ impl Tree {
         }
         return ego_entry
     }
+
+    fn flush_letter_list(html_content: &mut String, li_notes_per_letter: &mut String) {
+        html_content.push_str(
+            &html::HtmlTag::div().with_class("tag_list_wrapper")
+                .wrap(
+                &html::HtmlTag::ul()
+                .with_class("tag_list")
+                .wrap( &li_notes_per_letter )
+            )
+        );
+        *li_notes_per_letter = "".to_string();
+    }
     
     // Generate the html for the index page
     fn to_html_index(&self, parent_tags: &Vec<&Link>) -> String {
@@ -129,19 +141,11 @@ impl Tree {
             };
             if new_initial {
                 if letter.is_some() { // Already covered a letter, so flush the list of notes.
-                    html_content.push_str(
-                        &html::HtmlTag::div().with_class("tag_list_wrapper")
-                            .wrap(
-                            &html::HtmlTag::ul()
-                            .with_class("tag_list")
-                            .wrap( li_notes_per_letter )
-                        )
-                    );
-                    li_notes_per_letter = "".to_string();
+                    Self::flush_letter_list(&mut html_content, &mut li_notes_per_letter);
                 }
                 let curr_initial = utils::initial(link.link_text());
                 letter = Some(curr_initial);
-                let h2 = html::HtmlTag::header(2).wrap(curr_initial);
+                let h2 = html::HtmlTag::header(2).wrap(curr_initial.to_uppercase());
                 html_content.push_str(&h2);
             }
             
@@ -150,10 +154,13 @@ impl Tree {
             li_notes_per_letter.push_str(
                 &html::HtmlTag::li().wrap(
                     link_to_html(&link)
-                    //&html::link(&link.target, &link.link_text(), "")
                 )
             );
         }
+        if li_notes_per_letter.len() > 0 { // Flush whatever is left.
+            Self::flush_letter_list(&mut html_content, &mut li_notes_per_letter);
+        }
+
         return html_content;
     }
 
@@ -240,7 +247,6 @@ impl Tree {
         Ok(())
     }
 }
-
 
 
 #[cfg(test)]
