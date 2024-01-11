@@ -1,15 +1,18 @@
 use std::path::{Path, PathBuf};
+use log::info;
 
 use regex::Regex;
 
 lazy_static! {
-    static ref OBSIDIAN_NOTE_LINK_RE: Regex =
-        Regex::new(r"^(?P<file>[^#\^|]*)??([#](?P<block>^)??(?P<section>.+?))??(\|(?P<label>.+?))??$").unwrap();
+    static ref OBSIDIAN_NOTE_LINK_RE: Regex = Regex::new(
+        r"^(?P<file>[^#\^|]*)??([#](?P<block>^)??(?P<section>.+?))??(\|(?P<label>.+?))??$"
+    )
+    .unwrap();
 }
 
 use super::{errors, note::Note, utils::prepend_slash};
 
-#[derive(Debug,PartialEq, Clone, Eq, Hash)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Link {
     pub target: PathBuf,
     pub subtarget: Option<String>,
@@ -46,14 +49,12 @@ pub enum FileType {
 
 fn attachment_type_from_file(file: &Path) -> FileType {
     let ext_own = match file.extension() {
-        Some(e) => {
-            e.to_string_lossy().to_lowercase() 
-        },
+        Some(e) => e.to_string_lossy().to_lowercase(),
         None => {
             return FileType::Misc;
         }
     };
-    let ext = ext_own.as_str();  
+    let ext = ext_own.as_str();
     //TODO -- Something weird is going on here: double reference??
     if ext.len() >= 5 {
         // very long file extension, probably a false positive.
@@ -96,40 +97,65 @@ impl Link {
         return LinkType::Note;
     }
 
-    ///Express the target of the link relative to the given directory. 
+    ///Express the target of the link relative to the given directory.
     ///If the link is not in the given directory, then the target is not changed.
     pub fn set_relative(mut self, dir: &Path) -> Self {
-        let relative_path = &self.target.strip_prefix(dir)
-            .unwrap_or(&self.target);
+        let relative_path = &self.target.strip_prefix(dir).unwrap_or(&self.target);
         self.target = prepend_slash(relative_path);
         self
     }
 
-
     pub fn new<N: Into<String>, T: Into<PathBuf>>(name: N, target: T) -> Self {
         Self {
-            target: target.into(), 
-            subtarget: None, 
+            target: target.into(),
+            subtarget: None,
             alias: Some(name.into()),
             source_string: "".to_string(),
-            is_attachment: false
+            is_attachment: false,
         }
     }
 
     pub fn from_note(note: &Note) -> Self {
         Link {
             target: note.path.clone(),
-            subtarget: None, 
-            alias: Some(note.title.clone()), 
-            source_string: "".to_string(), 
-            is_attachment: false
+            subtarget: None,
+            alias: Some(note.title.clone()),
+            source_string: "".to_string(),
+            is_attachment: false,
         }
     }
 
     pub fn link_text(&self) -> String {
         match &self.alias {
             Some(alias) => alias.clone(),
-            None => self.target.to_string_lossy().to_string()
+            None => self.target.to_string_lossy().to_string(),
+        }
+    }
+
+    ///Construct a new [Link] from a markdown-styled reference
+    pub fn from_md_link<T, L, S>(
+        md_link: L,
+        target: T,
+        alias: Option<S>,
+        is_attachment: bool,
+    ) -> Self
+    where
+        T: Into<String>,
+        L: Into<String> + std::fmt::Debug,
+        S: Into<String>,
+    {
+        let raw_target: String = target.into();
+        let (target, subtarget) = &raw_target.split_once("#")
+            .map_or_else(
+                || (PathBuf::from(&raw_target), None),
+                |(t, s)| (PathBuf::from(t), Some(s.into()))
+            ); 
+        Link {
+            target: target.to_owned(),
+            subtarget: subtarget.to_owned(),
+            alias: alias.map(|s| s.into()),
+            source_string: md_link.into(),
+            is_attachment
         }
     }
 
@@ -144,22 +170,13 @@ impl Link {
 
         let target = match captures.name("file") {
             Some(filename) => filename.as_str().trim(),
-            None => ""
+            None => "",
         };
 
-        //let target = captures
-            //.name("file")
-
-            //.unwrap_or_else(|| "")
-            ////.ok_or_else(|| errors::InvalidObsidianLink::MissingMatchGroup {
-            ////    link: obs_link.to_string(),
-            ////    group: "file".to_string(),
-            ////})?
-            //.as_str()
-            //.trim();
-
         let alias = captures.name("label").map(|v| v.as_str().to_string());
-        let subtarget = captures.name("section").map(|v| v.as_str().to_string())
+        let subtarget = captures
+            .name("section")
+            .map(|v| v.as_str().to_string())
             .and_then(|name| Some(name.trim().to_owned()));
 
         let source_str = format!("[[{}]]", obs_link).to_string();
@@ -177,10 +194,10 @@ impl<'a> From<Note<'a>> for Link {
     fn from(note: Note<'a>) -> Self {
         Link {
             target: note.path.clone(),
-            subtarget: None, 
-            alias: Some(note.title.clone()), 
-            source_string: "".to_string(), 
-            is_attachment: false
+            subtarget: None,
+            alias: Some(note.title.clone()),
+            source_string: "".to_string(),
+            is_attachment: false,
         }
     }
 }
@@ -188,17 +205,17 @@ impl<'a> From<Note<'a>> for Link {
 #[cfg(test)]
 mod tests {
     use super::{Link, LinkType};
-    use std::{path::PathBuf, assert_eq};
+    use std::{assert_eq, path::PathBuf};
 
     #[test]
     fn test_from_obsidian_standard() {
-        let test_string = "link_to_note"; 
+        let test_string = "link_to_note";
         let expected_link = Link {
-            target: PathBuf::from("link_to_note"), 
+            target: PathBuf::from("link_to_note"),
             subtarget: None,
             alias: None,
-            is_attachment: false, 
-            source_string: format!("[[{}]]", test_string).to_string()
+            is_attachment: false,
+            source_string: format!("[[{}]]", test_string).to_string(),
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -206,13 +223,13 @@ mod tests {
 
     #[test]
     fn test_from_obsidian_blockref() {
-        let test_string = "link_to_note#^someblock"; 
+        let test_string = "link_to_note#^someblock";
         let expected_link = Link {
-            target: PathBuf::from("link_to_note"), 
+            target: PathBuf::from("link_to_note"),
             subtarget: Some(String::from("^someblock")),
             alias: None,
-            is_attachment: false, 
-            source_string: format!("[[{}]]", test_string).to_string()
+            is_attachment: false,
+            source_string: format!("[[{}]]", test_string).to_string(),
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -221,13 +238,13 @@ mod tests {
 
     #[test]
     fn test_from_obsidian_header() {
-        let test_string = "link_to_note#someblock"; 
+        let test_string = "link_to_note#someblock";
         let expected_link = Link {
-            target: PathBuf::from("link_to_note"), 
+            target: PathBuf::from("link_to_note"),
             subtarget: Some(String::from("someblock")),
             alias: None,
-            is_attachment: false, 
-            source_string: format!("[[{}]]", test_string).to_string()
+            is_attachment: false,
+            source_string: format!("[[{}]]", test_string).to_string(),
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -235,13 +252,13 @@ mod tests {
     }
     #[test]
     fn test_from_obsidian_with_spaces() {
-        let test_string = "link to note"; 
+        let test_string = "link to note";
         let expected_link = Link {
-            target: PathBuf::from("link to note"), 
+            target: PathBuf::from("link to note"),
             subtarget: None,
             alias: None,
-            is_attachment: false, 
-            source_string: format!("[[{}]]", test_string).to_string()
+            is_attachment: false,
+            source_string: format!("[[{}]]", test_string).to_string(),
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -249,41 +266,41 @@ mod tests {
 
     #[test]
     fn test_from_obsidian_with_leading_spaces() {
-        let test_string = " link to note"; 
+        let test_string = " link to note";
         let expected_link = Link {
-            target: PathBuf::from("link to note"), 
+            target: PathBuf::from("link to note"),
             subtarget: None,
             alias: None,
-            is_attachment: false, 
-            source_string: format!("[[{}]]", test_string).to_string()
+            is_attachment: false,
+            source_string: format!("[[{}]]", test_string).to_string(),
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
     }
-    
+
     #[test]
     fn test_from_obsidian_no_file() {
-        let test_string = "#^internal_id"; 
+        let test_string = "#^internal_id";
         let expected_link = Link {
-            target: PathBuf::from(""), 
+            target: PathBuf::from(""),
             subtarget: Some("^internal_id".to_string()),
             alias: None,
-            is_attachment: false, 
-            source_string: format!("[[{}]]", test_string).to_string()
+            is_attachment: false,
+            source_string: format!("[[{}]]", test_string).to_string(),
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
     }
-    
+
     #[test]
     fn test_from_obsidian_with_trailing_spaces() {
-        let test_string = "link to note "; 
+        let test_string = "link to note ";
         let expected_link = Link {
-            target: PathBuf::from("link to note"), 
+            target: PathBuf::from("link to note"),
             subtarget: None,
             alias: None,
-            is_attachment: false, 
-            source_string: format!("[[{}]]", test_string).to_string()
+            is_attachment: false,
+            source_string: format!("[[{}]]", test_string).to_string(),
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -291,30 +308,29 @@ mod tests {
 
     #[test]
     fn test_from_obsidian_with_alias() {
-        let test_string = "link to note|the note I want to mention"; 
+        let test_string = "link to note|the note I want to mention";
         let expected_link = Link {
-            target: PathBuf::from("link to note"), 
+            target: PathBuf::from("link to note"),
             subtarget: None,
             alias: Some("the note I want to mention".to_string()),
-            is_attachment: false, 
-            source_string: format!("[[{}]]", test_string).to_string()
+            is_attachment: false,
+            source_string: format!("[[{}]]", test_string).to_string(),
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
     }
     #[test]
     fn test_from_obsidian_with_subtarget() {
-        let test_string = "link to note#header1|the note I want to mention"; 
+        let test_string = "link to note#header1|the note I want to mention";
         let expected_link = Link {
-            target: PathBuf::from("link to note"), 
+            target: PathBuf::from("link to note"),
             subtarget: Some("header1".to_string()),
             alias: Some("the note I want to mention".to_string()),
-            is_attachment: false, 
-            source_string: format!("[[{}]]", test_string).to_string()
+            is_attachment: false,
+            source_string: format!("[[{}]]", test_string).to_string(),
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
     }
     // More tests...
 }
-

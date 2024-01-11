@@ -4,9 +4,22 @@ lazy_static! {
 static ref OBSIDIAN_LINK_RE: Regex = 
     Regex::new(r"(?P<is_attachment>!?)\[{2}(?P<link>[^\[]*?)\]{2}")
 .unwrap();
+
+static ref MD_LINK_RE: Regex = 
+    Regex::new(r"(?P<is_attachment>!?)\[(?P<alias>[^\]]*?)\]\((?P<target>[^\)]*?)\)")
+.unwrap();
 }
 use super::link::Link;
 
+pub fn find_markdown_links(content: &str) -> Vec<Link> {
+    MD_LINK_RE.captures_iter(content)
+        .map(|capture| Link::from_md_link(
+                capture.get(0).map_or("", |s| s.as_str()), 
+                &capture["target"],
+                Some(&capture["alias"]),
+                !capture["is_attachment"].is_empty())
+        ).collect()
+}
 
 pub fn find_obsidian_links(content: &str) -> Vec<Link> {
     OBSIDIAN_LINK_RE.captures_iter(content)

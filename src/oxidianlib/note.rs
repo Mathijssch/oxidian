@@ -145,10 +145,13 @@ impl<'a> Note<'a> {
         // Remove code blocks, and math.
         let (mut content, mut placeholders) = Self::remove_protected_elems(content);
         // Extract the links
-        let links = Self::find_obsidian_links(&content);
+        let mut links = Self::find_obsidian_links(&content);
         // Replace links by placeholders, since they may also contain protected symbols with
         // special meaning, like `^` and `#`.
+        let mut markdown_links = Self::find_markdown_links(&content);
+        links.append(&mut markdown_links);
         content = Self::replace_links_by_placeholders(content, &mut placeholders, &links);
+        //content = Self::replace_links_by_placeholders(content, &mut placeholders, &markdown_links);
         let tags = Self::find_tags(&content);
         // Replace admonitions by placeholders, so they are not recognized as quotes by the
         // markdown processor 
@@ -175,6 +178,9 @@ impl<'a> Note<'a> {
         let mut content = content;
         for link in links {
             let link_ph = Sanitization::from(link.source_string.to_string());
+            //if link.source_string.contains("diff") {
+            //    info!("Replacing {} with {}", link_ph.original, link_ph.get_placeholder());
+            //}
             content = content.replace(&link_ph.original, &link_ph.get_placeholder());
             placeholders.push(link_ph);
         }
@@ -204,6 +210,10 @@ impl<'a> Note<'a> {
 
     fn find_obsidian_links(content: &str) -> Vec<Link> {
         obs_links::find_obsidian_links(content)
+    }
+
+    fn find_markdown_links(content: &str) -> Vec<Link> {
+        obs_links::find_markdown_links(content)
     }
     
     fn find_tags(content: &str) -> Vec<obs_tags::Tag> {

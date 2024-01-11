@@ -1,6 +1,7 @@
+use log::info;
 use std::{
     collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher}, cmp,
+    hash::{Hash, Hasher}
 };
 
 #[derive(Hash,Debug,PartialEq)]

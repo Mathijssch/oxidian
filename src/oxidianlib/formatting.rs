@@ -149,8 +149,8 @@ impl Tree {
                 html_content.push_str(&h2);
             }
             
-            info!("Adding link       {:?} of type {:?}", link, link.link_type());
-            info!("Gets converted to {:?}", link_to_html(&link));
+            debug!("Adding link       {:?} of type {:?}", link, link.link_type());
+            debug!("Gets converted to {:?}", link_to_html(&link));
             li_notes_per_letter.push_str(
                 &html::HtmlTag::li().wrap(
                     link_to_html(&link)
@@ -215,12 +215,12 @@ impl Tree {
 
         //info!("Relative path {:?}", relative_page_path);
         if let Some(parent_dir) = absolute_page_path.parent() {
-            info!("Making directory {:?}", parent_dir);
+            debug!("Making directory {:?}", parent_dir);
             filesys::create_dir_if_not_exists(&parent_dir)?;
         }
         //info!("Now creating file {:?}", absolute_page_path);
         let file = File::create(&absolute_page_path)?;
-        info!("Writing tag page {:?}", absolute_page_path);
+        debug!("Writing tag page {:?}", absolute_page_path);
         let mut writer = std::io::BufWriter::new(file);
         let parent_tag_names: Vec<String> = inner_tags.iter().map(
             |t| t.link_text()

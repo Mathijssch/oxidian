@@ -41,6 +41,14 @@ pub enum InvalidObsidianLink<T: fmt::Debug, U: fmt::Debug> {
 }
 
 #[derive(Error, Debug)]
+pub enum InvalidMarkdownLink<T: fmt::Debug, U: fmt::Debug> {
+    #[error("Could not parse the given Markdown-style link: {0:?}")]
+    ParseError(T),
+    #[error("Did not find match group {group:?} in link {link:?}.")]
+    MissingMatchGroup{link: T, group: U}
+}
+
+#[derive(Error, Debug)]
 pub enum MathFindError<T: fmt::Debug> {
     #[error("Already in math mode. Cannot open a new math environment")]
     NestedMathMode(T),
