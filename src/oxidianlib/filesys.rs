@@ -50,6 +50,28 @@ pub fn get_all_notes(path: &Path) -> impl Iterator<Item = io::Result<PathBuf>> {
     })
 }
 
+
+///Return the given path `path`, but expressed relative to path `relative_to`.
+///If `relative_to` is not a prefix of `path`, then a copy of `path` is returned.
+///
+///This function also returns whether this was the case or not. 
+///This could be useful to determine whether the extracted piece has the be joined to `relative_to` again later.
+pub fn relative_to_with_info<T: AsRef<Path>, U: AsRef<Path>>( path: T, relative_to: U ) -> (PathBuf, bool) { 
+    let mut has_prefix = true;
+    let path_ref = path.as_ref();
+    let internal_path = path_ref.strip_prefix(relative_to.as_ref())
+        .unwrap_or_else(|_| {has_prefix = false; return path_ref; });
+    (internal_path.to_owned(), has_prefix)
+}
+
+///Return the given path `path`, but expressed relative to path `relative_to`.
+///If `relative_to` is not a prefix of `path`, then a copy of `path` is returned.
+pub fn relative_to<T: AsRef<Path>, U: AsRef<Path>>( path: T, relative_to: U ) -> PathBuf { 
+    let path_ref = path.as_ref();
+    path_ref.strip_prefix(relative_to.as_ref())
+        .unwrap_or_else(|_| path_ref ).to_owned()
+}
+
 pub fn get_all_notes_exclude<'a>(path: &Path, ignore: &'a Vec<PathBuf>) -> impl Iterator<Item = io::Result<PathBuf>> + 'a {
     let entries = WalkDir::new(path).into_iter()
         .filter_entry(|entry| {

@@ -37,7 +37,7 @@ fn render_link(link: &Link, to_html: bool) -> String {
     match link.link_type() {
         LinkType::Note => {
             // Link to note should point to html page.
-            let target_rel = slugify_path(&Path::new(&link.target), Some("html")).unwrap();
+            let target_rel = slugify_path(&link.target, Some("html")).unwrap();
             let mut target_abs = prepend_slash(&target_rel)
                 .to_string_lossy()
                 .to_string();

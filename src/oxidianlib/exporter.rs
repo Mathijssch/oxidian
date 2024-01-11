@@ -2,7 +2,7 @@ use crate::oxidianlib::filesys::copy_directory;
 use crate::oxidianlib::utils::move_to;
 use log::{debug, info, warn};
 
-use super::filesys::{slugify_path, get_all_notes_exclude};
+use super::filesys::{slugify_path, get_all_notes_exclude, self};
 use super::link::Link;
 use super::load_static::HTML_TEMPLATE;
 use super::tag_tree::Tree;
@@ -339,15 +339,26 @@ impl<'a> Exporter<'a> {
         }
     }
 
+    ///Slugify the portion of the path relative to the input directory, or the whole thing, if the
+    ///input directory is not part of the `path`.
+    fn slugify_path<'p> (&self, path: &'p Path, extension: Option<&str>) -> Result<PathBuf, super::errors::NotePathError<&'p Path>> {
+        let (internal_path, has_prefix) = super::filesys::relative_to_with_info(&path, &self.input_dir);
+        let slugged = slugify_path(&internal_path, extension).map_err(
+            |_| super::errors::NotePathError::NoStem(path)
+        )?;
+        if has_prefix {
+            return Ok(self.input_dir.join(&slugged));
+        } else {
+            return Ok(slugged);
+        }
+    }
+
     fn compile_note<'b>(&mut self, new_note: &mut note::Note<'b>, backlinks: &'b Backlinks) {
         debug!("Processing note {:?}", new_note.path);
 
         self.add_backlinks_to_note(new_note, backlinks);
 
-        let mut output_path = move_to(&new_note.path, &self.input_dir, &self.output_dir)
-            .unwrap_or(self.output_dir.join(&new_note.path));
-        output_path = slugify_path(&output_path, Some("html"))
-            .expect("Could not convert the note path to a valid HTML path.");
+        let output_path = self.input_to_output(&new_note.path, Some("html"));
         debug!("exporting to {:?}", output_path);
 
         for link in &new_note.links {
@@ -360,14 +371,20 @@ impl<'a> Exporter<'a> {
 
         self.stats.note_count += 1;
     }
+    
+    fn input_to_output(&self, path: &Path, extension: Option<&str>) -> PathBuf {
+        let output_path = self.slugify_path(&path, extension)
+            .expect("Could not slugify path.");
+        move_to(&output_path, &self.input_dir, &self.output_dir)
+            .unwrap_or_else(|_| self.output_dir.join(&output_path))
+    }
+
 
     fn transfer_linked_file(&mut self, link: &Link) {
         // Only move linked attachments
         if !link.is_attachment { return; }
 
-        let mut output_path = move_to(&link.target, &self.input_dir, &self.output_dir)
-            .unwrap_or(self.output_dir.join(&link.target));
-        output_path = slugify_path(&output_path, None).unwrap();
+        let output_path = self.input_to_output(&link.target, None);
 
         let input_path = match &self.cfg.attachment_dir {
             Some(attachment_dir) => self.input_dir.join(attachment_dir.join(&link.target)),
