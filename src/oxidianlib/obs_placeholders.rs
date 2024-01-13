@@ -12,7 +12,7 @@ enum MathState {
     ExpectClose,
 }
 
-struct DelimPair {
+pub struct DelimPair {
     pub open: String,
     pub close: String,
 }
@@ -33,13 +33,23 @@ fn get_search_pattern<'a>(state: &MathState, pair: &'a DelimPair) -> &'a str {
     }
 }
 
-fn find_pairs(content: &str, delim: &DelimPair) -> Vec<Sanitization> {
-    let mut result = vec![];
+
+fn get_placeholders<T: Iterator<Item=(usize, usize)>>(content: &str, ranges: T) -> Vec<Sanitization> {
+    ranges.map(
+        |(start, end)| Sanitization::from(&content[start..end]) 
+    ).collect()
+}
+
+fn generate_placeholders(content: &str, delim: &DelimPair) -> Vec<Sanitization> {
+    get_placeholders(&content, find_pair_ids(&content, delim).into_iter())
+}
+
+
+pub fn find_pair_ids(content: &str, delim: &DelimPair) -> Vec<(usize, usize)> {
+    let mut ranges = vec![];
     let mut state = MathState::ExpectOpen;
     let mut curr_start = 0;
     let mut prev_open = None;
-
-    //info!("Covering {:?}", &content.chars().take(2200).collect::<String>());
 
     while let Some(index) = content[curr_start..].find(get_search_pattern(&state, &delim)) { 
         let pattern = get_search_pattern(&state, delim);
@@ -59,8 +69,11 @@ fn find_pairs(content: &str, delim: &DelimPair) -> Vec<Sanitization> {
                         curr_start + index + pattern.len(),
                         content.len()
                     );
-                    let to_replace = &content[start_idx..end_idx];
-                    result.push(Sanitization::from(to_replace));
+                    ranges.push((start_idx, end_idx));
+                    debug!("Found slice {}", &content[start_idx..end_idx]);
+                    
+                    //let to_replace = &content[start_idx..end_idx];
+                    //result.push(Sanitization::from(to_replace));
                     state = MathState::ExpectOpen;
                     prev_open = None;
                 }
@@ -69,7 +82,7 @@ fn find_pairs(content: &str, delim: &DelimPair) -> Vec<Sanitization> {
         curr_start = cmp::min(curr_start + index + pattern.len(), 
                               content.len());
     };
-    result
+    ranges
 }
 
 ///Find code that is within pairs of given delimiters 
@@ -88,7 +101,7 @@ pub fn disambiguate_protected(content: &str) -> (String, Vec<Sanitization>) {
     ];
     let mut new_string = String::from(content);
     for pair in pairs { 
-        let sanitize = find_pairs(&new_string, &pair);
+        let sanitize = generate_placeholders(&new_string, &pair);
         for delimited_element in &sanitize { 
             new_string = new_string.replace(
                 &delimited_element.original, &delimited_element.get_placeholder()
@@ -107,7 +120,7 @@ mod tests {
 
     use crate::oxidianlib::obs_placeholders::DelimPair;
 
-    use super::{find_pairs, Sanitization};
+    use super::{generate_placeholders, Sanitization};
 
     fn run_basic_test(query: &str, solution: Vec<&str>, open_delim: &str, close_delim: &str) {
         let sanitization: Vec<Sanitization> = solution
@@ -115,7 +128,7 @@ mod tests {
             .map(|s| Sanitization::from(s.to_string()))
             .collect();
         let delimiters = DelimPair::new(open_delim, close_delim);
-        let pairs = find_pairs(query, &delimiters);
+        let pairs = generate_placeholders(query, &delimiters);
         assert_eq!(sanitization, pairs);
     }
 

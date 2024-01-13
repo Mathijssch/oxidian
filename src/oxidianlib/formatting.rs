@@ -102,7 +102,8 @@ impl Tree {
 
         if !self.is_leaf() {
             // expand recursively 
-            let sublist = self.children.values().map(|subtree| subtree.to_html_inner(true, &child_basepath));
+            let sublist = self.children                    
+                    .values().map(|subtree| subtree.to_html_inner(true, &child_basepath));
             ego_entry.push_str(&html::ul(sublist, &options));
         }
         return ego_entry
@@ -134,12 +135,13 @@ impl Tree {
             html_content.push_str(&breadcrumbs);
         }
 
-        let mut sorted_links: Vec<&Link> = self.contents.iter().collect();
-            sorted_links.sort_unstable_by_key(|link| link.link_text());
+        // FIXED -- sorting is guaranteed by BTreeSet
+        //let mut sorted_links: Vec<&Link> = self.contents.iter().collect();
+        //    sorted_links.sort_unstable_by_key(|link| link.link_text());
 
         let mut letter: Option<char> = None;
         let mut li_notes_per_letter = "".to_string();
-        for link in sorted_links {
+        for link in &self.contents {
             let new_initial = match letter {
                 Some(l) => l.to_lowercase().ne(utils::initial(link.link_text()).to_lowercase()),
                 None    => true

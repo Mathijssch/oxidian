@@ -9,6 +9,7 @@ use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use super::link::Link;
 use super::placeholder::Sanitization;
 use super::obs_headers::HeaderParser;
+use super::obs_highlights::replace_obs_highlights;
 use super::utils::{markdown_to_html, read_note_from_file, self};
 use super::{filesys, html, obs_tags};
 use super::{formatting, obs_admonitions, obs_comments, obs_links, obs_placeholders};
@@ -242,6 +243,8 @@ impl<'a> Note<'a> {
         Ok(())
     }
 
+    fn process_highlights(content: &str) -> String { replace_obs_highlights(content) }
+
     fn to_html_inner(&self, path: &Path, template_content: &str) -> Result<(), Error> {
         if let Some(parent_dir) = path.parent() {
             filesys::create_dir_if_not_exists(&parent_dir).unwrap();
@@ -250,6 +253,10 @@ impl<'a> Note<'a> {
         let mut writer = io::BufWriter::new(file);
 
         let mut content = self.content.to_owned();
+
+        // Needs to be done before replacing the highlights placeholders back 
+        // to avoid false matches.
+        content = Self::process_highlights(&content);
 
         for placeholder in self.placeholders.iter().filter(|p| p.before_markdown) {
             content = content.replace(&placeholder.get_placeholder(), &placeholder.replacement);

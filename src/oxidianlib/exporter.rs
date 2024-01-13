@@ -7,6 +7,7 @@ use super::link::Link;
 use super::load_static::HTML_TEMPLATE;
 use super::tag_tree::Tree;
 use super::{note, utils};
+use super::obs_highlights::replace_obs_highlights;
 use figment::Error;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};

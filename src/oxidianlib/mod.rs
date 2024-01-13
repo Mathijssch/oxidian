@@ -10,6 +10,7 @@ mod obs_admonitions;
 mod obs_links;
 mod obs_tags;
 mod obs_headers;
+mod obs_highlights;
 //mod obs_references; 
 mod formatting;
 mod tag_tree;

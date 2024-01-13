@@ -182,6 +182,18 @@ impl Link {
     }
 }
 
+impl PartialOrd for Link {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Link {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.link_text().cmp(&other.link_text())
+    }
+}
+
 impl<'a> From<Note<'a>> for Link {
     fn from(note: Note<'a>) -> Self {
         Link {

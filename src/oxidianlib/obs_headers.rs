@@ -29,7 +29,6 @@ impl HeaderParser {
 
     pub fn process_line(&mut self, line: &str) -> Option<String> {
         if EMPTYLINE.is_match(line){
-            debug!("Found empty line");
             self.state = HeaderState::PrecedingEmptyLine;
             return None;
         }
@@ -39,7 +38,6 @@ impl HeaderParser {
             // The line is not a header and not an empty line. 
             // Thus, it is a regular line.
             // We just take note and make no changes.
-            debug!("Found regular line `{}`", line);
             self.state = HeaderState::PrecedingRegLine;
             return None;
         }
@@ -53,7 +51,6 @@ impl HeaderParser {
                 self.state = HeaderState::Idle;
                 // If the preceding line is just a regular line, 
                 // add an empty line.
-                debug!("Adding empty line to {}", line);
                 return Some(format!("\n{}", line));
             }, 
             _ => {

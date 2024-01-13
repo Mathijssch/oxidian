@@ -56,6 +56,7 @@ pub struct HtmlTag<'a> {
     class: BTreeSet<String>,
     id: Option<String>,
     options: BTreeMap<String, String>,
+    inline: bool
 }
 
 pub enum TagType<'a> {
@@ -77,7 +78,13 @@ impl<'a> HtmlTag<'a>
             class: BTreeSet::new(),
             id: None,
             options: BTreeMap::new(),
+            inline: false
         }
+    }
+
+    pub fn set_inline(mut self: Self, is_it: bool) -> Self { 
+        self.inline = is_it; 
+        self 
     }
 
     pub fn header(level: u8) -> Self {
@@ -90,6 +97,7 @@ impl<'a> HtmlTag<'a>
 
     pub fn span() -> Self {
         Self::new(TagType::Span)
+            .set_inline(true)
     }
 
     pub fn ul() -> Self {
@@ -138,14 +146,14 @@ impl<'a> HtmlTag<'a>
     fn format_class(&self) -> String {
         let mut result = "".to_string();
         for class in self.class.iter() {
-            result.push_str(&format!("class=\"{}\" ", class));
+            result.push_str(&format!(" class=\"{}\" ", class));
         }
         result
     }
 
     fn format_id(&self) -> String {
         match &self.id {
-            Some(id_name) => format!("id=\"{}\"", id_name), 
+            Some(id_name) => format!(" id=\"{}\"", id_name), 
             None => "".to_string()
         }
     }
@@ -179,14 +187,15 @@ impl<'a> HtmlTag<'a>
         let cls_fmt = self.format_class();
         let tag_fmt = self.format_tag();
         let tag_attr = self.format_tag_attrs();
+        let linebreak = match self.inline {
+            true => " ",
+            false => "\n"
+        };
 
-        format!(
-            "<{tag} {tag_attrs} {classes} {idname} {attrs}>
-            {content}
-            </{tag}>", 
+        format!("<{tag} {tag_attrs} {classes}{idname}{attrs}>{linebreak}{content}{linebreak}</{tag}>", 
             tag=tag_fmt, tag_attrs=tag_attr, 
             classes=cls_fmt, idname=id_fmt, attrs=attr_fmt, 
-            content=content
+            content=content, linebreak=linebreak
         ) 
     }
 

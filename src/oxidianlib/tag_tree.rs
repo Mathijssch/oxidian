@@ -1,19 +1,19 @@
 use super::link::Link;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Tree {
     pub name: String,
-    pub children: HashMap<String, Tree>,
-    pub contents: HashSet<Link>,
+    pub children: BTreeMap<String, Tree>,
+    pub contents: BTreeSet<Link>,
 }
 
 impl Tree {
     pub fn new<T: Into<String>>(name: T) -> Self {
         Tree {
             name: name.into(),
-            children: HashMap::new(),
-            contents: HashSet::new(),
+            children: BTreeMap::new(),
+            contents: BTreeSet::new(),
         }
     }
 
@@ -66,6 +66,7 @@ impl Tree {
 
     /// Make a tree consisting of a single branch, where successive elements in the iter are set as
     /// child of the previous. If the given iterator is empty, then no tree is returned.
+    #[allow(dead_code)]
     pub fn from_iter<I, S>(branch: I) -> Option<Self> 
     where I: IntoIterator<Item=S>, 
           S: Into<String>
@@ -81,6 +82,7 @@ impl Tree {
     
     /// Get all the items in this tree recursively (including the items in the subtrees) 
     /// TODO - Figure out how to do this with iterators.
+    #[allow(dead_code)]
     pub fn get_contents_recursive(&self) -> Vec<&Link> {
         let mut result: Vec<&Link> = self.contents.iter().collect();
         for subtree in self.children.values() {
