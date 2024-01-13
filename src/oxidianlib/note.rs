@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, Error, Write};
 use std::path::{Path, PathBuf};
@@ -23,7 +24,7 @@ pub struct Note<'a> {
     content: String,
     placeholders: Vec<Sanitization>,
     pub title: String,
-    pub backlinks: Vec<&'a Link>,
+    pub backlinks: HashSet<&'a Link>,
 }
 
 
@@ -123,7 +124,7 @@ impl<'a> Note<'a> {
             frontmatter,
             placeholders: vec![],
             tags: vec![],
-            backlinks: vec![],
+            backlinks: HashSet::new(),
         })
 
     }
@@ -166,7 +167,7 @@ impl<'a> Note<'a> {
             frontmatter,
             placeholders,
             tags,
-            backlinks: vec![],
+            backlinks: HashSet::new(),
         })
     }
 
@@ -229,6 +230,11 @@ impl<'a> Note<'a> {
     fn sanitize(content: &str) -> String {
         return strip_comments(content);
     }
+
+    /// Add a backlink to `self`s set of backlinks. 
+    /// 
+    /// The provided [Link] should be a link to the note that refers to [self]. 
+    pub fn add_backlink(&mut self, link: &'a Link) { self.backlinks.insert(link); }
 
     ///Export the current note to a html file at the specified path.
     pub fn to_html<U: AsRef<str>>(&self, path: &Path, template_content: U) -> Result<(), Error> {

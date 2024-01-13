@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-type Backlinks = HashMap<PathBuf, Vec<Link>>;
+type Backlinks = HashMap<PathBuf, HashSet<Link>>;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExportConfig {
@@ -118,8 +118,8 @@ impl<'a> Exporter<'a> {
         for link in &note.links {
             backlinks
                 .entry(self.input_dir.join(&link.target).with_extension("md"))
-                .or_insert_with(Vec::new)
-                .push(Link::from_note(&note).set_relative(self.input_dir))
+                .or_insert_with(HashSet::new)
+                .insert(Link::from_note(&note).set_relative(self.input_dir));
         }
     }
 
@@ -333,7 +333,7 @@ impl<'a> Exporter<'a> {
         if let Some(refering_notes) = backlinks.get(&new_note.path) {
             refering_notes
                 .iter()
-                .for_each(|refering_note| new_note.backlinks.push(&refering_note))
+                .for_each(|refering_note| new_note.add_backlink(&refering_note))
         } else {
             debug!("No backlinks to path {:?}", new_note.path);
         }
