@@ -14,9 +14,15 @@ pub struct Tag {
 
 pub fn find_tags(content: &str) -> Vec<Tag> {
     let mut tags = OBSIDIAN_TAG_RE.captures_iter(content)
+        .filter(|capture| capture.get(0)
+                            .map_or(false, 
+                                |c| content[c.start()..c.end()].chars().any(|c| c.is_alphabetic()))
+                            )
         .map(|capture| Tag { 
             tag_path: String::from(&capture["tagname"]).to_lowercase(),
-            source: capture.get(0).map_or("", |m| m.as_str()).to_string(),
+            source: capture.get(0)
+                .map_or("", |m| m.as_str().trim_start())
+                .to_string(),
         })
         .collect::<Vec<Tag>>();
     // Sort by length (longest first) to fix issues pertaining to tags beginning with the same word.
@@ -67,8 +73,14 @@ mod tests {
             vec![Tag{tag_path: "tag_2".to_string(), source: "#tag_2".to_string()},  
                  Tag{tag_path: "tag2".to_string(), source: "#tag2".to_string()},
                  Tag{tag_path: "tag3".to_string(), source: "#tag3".to_string()},
-                 Tag{tag_path: "tag4".to_string(), source: "#tag4".to_string()}, 
                  Tag{tag_path: "tag".to_string(), source: "#tag".to_string()},
             ]);
+    }
+
+    #[test]
+    fn invalid_tags() {
+        // Note the order! The tags are sorted by length!
+        test_multiple_tags("A line with an invalid #2 and valid #tag2 and another #1902 invalid one: #@test or ##not-a-tag",
+            vec![Tag{tag_path: "tag2".to_string(), source: "#tag2".to_string()}]);
     }
 }
