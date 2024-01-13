@@ -36,7 +36,6 @@ enum Commands {
     #[command(arg_required_else_help = true)]
     Build {
         /// The directory containing the notes
-        #[arg(short, long)]
         dir: PathBuf,
 
         /// The output directory
