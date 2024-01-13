@@ -2,7 +2,7 @@ use regex::Regex;
 
 lazy_static! {
     static ref OBSIDIAN_TAG_RE: Regex =
-        Regex::new(r"#(?P<tagname>[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*)").unwrap();
+        Regex::new(r"\s#(?P<tagname>[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*)").unwrap();
 }
 
 
