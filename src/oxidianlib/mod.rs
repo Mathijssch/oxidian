@@ -19,3 +19,4 @@ mod frontmatter;
 mod obs_placeholders;
 mod load_static;
 mod placeholder;
+mod wrap_pulldown_cmark;

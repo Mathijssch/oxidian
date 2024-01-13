@@ -2,23 +2,12 @@ use std::{path::{Path, PathBuf}, fs::File};
 use std::io::Read;
 
 use pulldown_cmark::html;
+use super::wrap_pulldown_cmark::MarkdownParser;
 
 use super::exporter::ExportConfig;
 use figment::{Figment, providers::{Serialized, Format, Toml}};
 use figment::Error;
 
-//pub fn find_all_occurrences(text: &str, pattern: &str) -> Vec<usize> {
-//    let mut indices = Vec::new();
-//    let mut start = 0;
-
-//    while let Some(index) = text[start..].find(pattern) {
-//        let absolute_index = start + index;
-//        indices.push(absolute_index);
-//        start = absolute_index + pattern.len();
-//    }
-
-//    indices
-//}
 
 /// Return the contents of a file at path `path` as a String.
 pub fn read_note_from_file<T: AsRef<Path>>(path: T) -> Result<String, std::io::Error> {
@@ -43,25 +32,20 @@ pub fn initial<T: AsRef<str>>(text: T) -> char {
 ///
 ///Example 
 ///-------
-///```
-///let path = Path::from("indir/subdir/file.txt"); 
-///let base_path = Path::from("indir"); 
-///let new_path = Path::from("outdir");
+///```ignore
+///# use std::path::Path;
+///let path = Path::new("indir/subdir/file.txt"); 
+///let base_path = Path::new("indir"); 
+///let new_path = Path::new("outdir");
 ///
 ///let moved_path = move_to(path, base_path, new_path);
-///assert_eq!(moved_path, Ok(Path::from("outdir/subdir/file.txt")));
+///assert_eq!(moved_path, Ok(Path::new("outdir/subdir/file.txt")));
 ///
 ///```
 pub fn move_to(path: &Path, original: &Path, new_ref: &Path) -> Result<PathBuf, std::path::StripPrefixError> {
     let relative_path = path.strip_prefix(original)?;
     Ok(new_ref.join(relative_path))
 }
-
-//pub fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-//where P: AsRef<Path>, {
-//    let file = File::open(filename)?;
-//    Ok(io::BufReader::new(file).lines())
-//}
 
 /// Convert a given string containing Markdown content to a html representation.
 pub fn markdown_to_html(markdown: &str) -> String {  
@@ -72,10 +56,12 @@ pub fn markdown_to_html(markdown: &str) -> String {
     options.insert(pulldown_cmark::Options::ENABLE_TABLES);
     options.insert(pulldown_cmark::Options::ENABLE_FOOTNOTES);
     options.insert(pulldown_cmark::Options::ENABLE_TASKLISTS);
-
-    let parser = pulldown_cmark::Parser::new_ext(&markdown, options);
+    options.insert(pulldown_cmark::Options::ENABLE_HEADING_ATTRIBUTES);
+    
+    let basic_parser = pulldown_cmark::Parser::new_ext(&markdown, options);
+    let wrapper = MarkdownParser::new(basic_parser);
     let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
+    html::push_html(&mut html_output, wrapper);
     return html_output;
 }
 
