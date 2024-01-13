@@ -1,4 +1,5 @@
-use log::{debug, info};
+use log::debug;
+use slugify::slugify;
 use super::{html, utils, filesys};
 use std::fs::File;
 use std::io::Write;
@@ -43,7 +44,11 @@ fn render_link(link: &Link, to_html: bool) -> String {
                 .to_string();
             if let Some(subtarget) = &link.subtarget {
                 target_abs.push_str("#");
-                target_abs.push_str(subtarget);
+                if subtarget.starts_with('^') {
+                    target_abs.push_str(&subtarget['^'.len_utf8()..]);
+                } else {
+                    target_abs.push_str(&slugify!(subtarget));
+                }
             } 
             return render_link_aux(&target_abs, &link_text, to_html);
         },
