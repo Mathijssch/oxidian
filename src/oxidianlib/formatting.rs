@@ -33,7 +33,7 @@ fn render_link_aux(tg: &str, text: &str, to_html: bool) -> String {
 fn render_link(link: &Link, to_html: bool) -> String { 
 
     let link_target_str = link.target.to_string_lossy().to_string();
-    let link_text = link.alias.as_ref().unwrap_or_else(|| &link_target_str );
+    let link_text = link.link_text();
 
     match link.link_type() {
         LinkType::Note => {

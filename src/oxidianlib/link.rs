@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
-use log::info;
+use clap::builder::OsStr;
+use super::constants::NOTE_EXT;
 
 use regex::Regex;
 
@@ -120,7 +121,7 @@ impl Link {
     pub fn link_text(&self) -> String {
         match &self.alias {
             Some(alias) => alias.clone(),
-            None => self.target.to_string_lossy().to_string(),
+            None => self.target.with_extension("").to_string_lossy().to_string(),
         }
     }
 
@@ -151,6 +152,19 @@ impl Link {
         }
     }
 
+    fn needs_md_ext(path: &str, is_attachment: bool) -> bool {
+        if is_attachment { return false; }
+
+        let target_path = Path::new(path);
+        // Add markdown extension for notes.
+        if let Some(ext) = target_path.extension() {
+            if !NOTE_EXT.iter().any(|note_ext| OsStr::from(note_ext) == ext ) {
+                return true;
+            }
+        } else { return true; } 
+        return false;
+    }
+
     ///Construct a new [Link] from an Obsidian-styled reference
     pub fn from_obsidian_link(
         obs_link: &str,
@@ -164,8 +178,14 @@ impl Link {
             Some(filename) => filename.as_str().trim(),
             None => "",
         };
+        
+        let target_path = match Self::needs_md_ext(target, is_attachment) {
+            true => PathBuf::from(target.to_owned() + ".md"),
+            false => PathBuf::from(target)
+        };
 
-        let alias = captures.name("label").map(|v| v.as_str().to_string());
+        let alias = captures.name("label")
+                    .map(|v| v.as_str().to_string());
         let subtarget = captures
             .name("section")
             .map(|v| v.as_str().to_string())
@@ -173,7 +193,7 @@ impl Link {
 
         let source_str = format!("[[{}]]", obs_link).to_string();
         Ok(Link {
-            target: PathBuf::from(target),
+            target: target_path,
             subtarget,
             alias,
             is_attachment,
