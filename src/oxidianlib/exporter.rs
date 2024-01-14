@@ -2,11 +2,11 @@ use crate::oxidianlib::filesys::copy_directory;
 use crate::oxidianlib::utils::move_to;
 use log::{debug, info, warn};
 
-use super::filesys::{slugify_path, get_all_notes_exclude, self};
+use super::filesys::{slugify_path, get_all_notes_exclude, self, write_to_file};
 use super::link::Link;
 use super::load_static::HTML_TEMPLATE;
 use super::tag_tree::Tree;
-use super::{note, utils};
+use super::{note, utils, archive};
 use super::obs_highlights::replace_obs_highlights;
 use figment::Error;
 use serde_derive::{Deserialize, Serialize};
@@ -24,6 +24,7 @@ pub struct ExportConfig {
     pub static_dir: Option<PathBuf>,
     pub generate_nav: bool,
     pub generate_tag_index: bool,
+    pub generate_archive: bool
 }
 
 impl ExportConfig {
@@ -41,6 +42,7 @@ impl Default for ExportConfig {
             static_dir: None,
             generate_nav: true,
             generate_tag_index: true,
+            generate_archive: true,
         }
     }
 }
@@ -219,6 +221,18 @@ impl<'a> Exporter<'a> {
         None
     }
 
+    fn generate_archive_page_from_vec<'b>(&self, notes: &Vec<note::Note<'b>>) {
+        let archive_html = archive::generate_archive_page_html(
+            &notes, 
+            &self.input_dir,
+            &self.get_tags_directory(), 
+            &self.note_template
+        ); 
+        write_to_file(&self.get_archive_dir(), &archive_html);
+    }
+
+    fn get_archive_dir(&self) -> PathBuf { self.output_dir.join("archive.html") }
+
     pub fn export(&mut self) {
         let start = Instant::now();
         debug!(
@@ -263,6 +277,13 @@ impl<'a> Exporter<'a> {
         // -----------------------------------------
         if self.cfg.generate_nav || self.cfg.generate_tag_index {
             self.process_tags_from_vec(&iter_notes);
+        }
+
+        // Generate an archive page
+        // ------------------------
+        if self.cfg.generate_archive {
+            info!("Generate archive page.");
+            self.generate_archive_page_from_vec(&iter_notes);
         }
 
         // Compile the notes

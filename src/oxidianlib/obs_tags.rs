@@ -7,7 +7,7 @@ lazy_static! {
 }
 
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Tag {
     pub tag_path: String, 
     pub source: String

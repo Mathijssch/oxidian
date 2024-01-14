@@ -2,8 +2,14 @@
 
 ## To-do 
 - [ ] Detect broken links
-- [ ] Generate tag overview pages 
-- [ ] Populate navbar
+- [ ] Properly differentiate between absolute and relative paths
+    - The above two could be merged:
+    -   First assume the link is relative and check existence of the file. 
+    -   If not found, try absolute. 
+    -   If still not found, then mark as a broken link.
+- [ ] (Link previews)
+- [x] Generate tag overview pages 
+- [x] Populate navbar
 - [ ] Generate timeline page
 - [ ] Build search index
 - [ ] [performance]: cache the backlinks.

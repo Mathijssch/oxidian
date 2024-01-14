@@ -256,6 +256,13 @@ impl Tree {
 }
 
 
+impl Link {
+    pub fn to_html(&self) -> String { link_to_html(&self) }
+    pub fn to_md(&self) -> String { link_to_md(&self) }
+}
+
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

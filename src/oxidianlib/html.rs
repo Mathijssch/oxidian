@@ -67,7 +67,9 @@ pub enum TagType<'a> {
     Video(&'a str),
     A(&'a str),
     Div, 
-    Span
+    Span, 
+    Details, 
+    Summary, 
 }
 
 impl<'a> HtmlTag<'a>
@@ -89,10 +91,19 @@ impl<'a> HtmlTag<'a>
 
     pub fn header(level: u8) -> Self {
         Self::new(TagType::Header(level))
+            .set_inline(true)
     }
 
     pub fn div() -> Self {
         Self::new(TagType::Div)
+    }
+
+    pub fn summary() -> Self {
+        Self::new(TagType::Summary)
+    }
+
+    pub fn details() -> Self {
+        Self::new(TagType::Details)
     }
 
     pub fn span() -> Self {
@@ -108,16 +119,22 @@ impl<'a> HtmlTag<'a>
         Self::new(TagType::Li)
     }
 
+    #[allow(dead_code)]
     pub fn a(link: &'a str) -> Self {
         Self::new(TagType::A(link))
+            .set_inline(true)
     }
 
+    #[allow(dead_code)]
     pub fn img(src: &'a str) -> Self {
         Self::new(TagType::Img(src))
+            .set_inline(true)
     }
 
+    #[allow(dead_code)]
     pub fn video(src: &'a str) -> Self {
         Self::new(TagType::Video(src))
+            .set_inline(true)
     }
 
     pub fn with_class<T: Into<String>>(&mut self, class_name: T) -> &mut Self {
@@ -125,11 +142,13 @@ impl<'a> HtmlTag<'a>
         self 
     }
 
+    #[allow(dead_code)]
     pub fn with_id<T: Into<String>>(&mut self, class_name: T) -> &mut Self {
         self.class.insert(class_name.into());
         self 
     }
 
+    #[allow(dead_code)]
     pub fn with_attr<K: Into<String>, V: Into<String>>(&mut self, attr_name: K, attr_value: V) -> &mut Self { 
         self.options.insert(attr_name.into(), attr_value.into());
         self
@@ -177,6 +196,8 @@ impl<'a> HtmlTag<'a>
             TagType::A(_) => "a".to_string(),
             TagType::Div => "div".to_string(),
             TagType::Span => "span".to_string(),
+            TagType::Details => "details".to_string(),
+            TagType::Summary => "summary".to_string()
         }
 
     }

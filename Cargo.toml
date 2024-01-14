@@ -8,6 +8,7 @@ authors = ["Mathijs Schuurmans <mathijs.schuurmans@gmail.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+chrono = "0.4.31"
 clap = { version = "4.2.7", features = ["derive"] }
 figment = { version = "0.10.13", features = ["toml"] }
 lazy_static = "1.4.0"

@@ -2,7 +2,9 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, Error, Write};
 use std::path::{Path, PathBuf};
-use log::debug;
+use std::str::FromStr;
+use log::{debug,info};
+use chrono::NaiveDate;
 
 //use super::formatting::link_to_md;
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
@@ -16,7 +18,7 @@ use super::{formatting, obs_admonitions, obs_comments, obs_links, obs_placeholde
 use yaml_rust::Yaml;
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Note<'a> {
     pub path: PathBuf,
     pub links: Vec<Link>,
@@ -170,6 +172,39 @@ impl<'a> Note<'a> {
             tags,
             backlinks: HashSet::new(),
         })
+    }
+
+    ///Get the creation date of the note in a given path.
+    ///
+    pub fn get_modification_time(&self) -> Result<std::time::SystemTime, std::io::Error> {
+        let metadata = std::fs::metadata(&self.path)?;
+        metadata.modified()
+    }
+    /////Get the creation date of the note in a given path.
+    /////
+    pub fn get_creation_date(&self) -> Result<NaiveDate, std::io::Error> {
+        info!("Getting creation date of {}", self.title);
+
+        // Try frontmatter 
+        if let Some(fm) = &self.frontmatter {
+            info!("Reading creation date from frontmatter.");
+            if let Some(date) = fm["date_created"].as_str() {
+                debug!("Read date {} date from frontmatter of {}", date, self.title);
+                if let Ok(parsed) = NaiveDate::from_str(date) { 
+                    return Ok(parsed);
+                };
+                info!("Failed to read creation date from frontmatter");
+            }
+        }
+
+        // Try to read the creation date from git.
+        if let Some(time) = utils::get_git_creation_time(&self.path) {
+            return Ok(time.date());
+        };
+
+        // Try to work from the system time 
+        let modified_time = self.get_modification_time()?;
+        Ok(utils::to_datetime(modified_time).date())
     }
 
     fn replace_links_by_placeholders(

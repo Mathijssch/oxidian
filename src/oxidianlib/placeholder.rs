@@ -1,10 +1,9 @@
-use log::info;
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher}
 };
 
-#[derive(Hash,Debug,PartialEq)]
+#[derive(Hash,Debug,PartialEq,Clone)]
 pub struct Sanitization { 
     pub original: String, 
     pub replacement: String,

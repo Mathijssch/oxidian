@@ -1,6 +1,8 @@
-use log::{info, error, warn, debug, trace};
+use log::{info, error, warn, debug};
 use super::{constants::NOTE_EXT, errors::NotePathError};
 use std::{io, fs, ffi::OsStr};
+use std::fs::File;
+use std::io::Write;
 use slugify::slugify;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -129,7 +131,12 @@ pub fn copy_directory<U: AsRef<Path>, T: AsRef<Path>>(src: U, dest: T) -> io::Re
 }
 
 
-
+///Write the given string to a file at the given path.
+pub fn write_to_file(path: &Path, content: &str) {
+    let file = File::create(&path).expect("Could not create path!");
+    let mut writer = std::io::BufWriter::new(file);
+    writer.write_all(content.as_bytes()).expect("Could not write content to file");
+}
 
 
 ///Recursively copy directory `src` to `dest`.

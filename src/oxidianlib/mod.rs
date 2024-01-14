@@ -13,6 +13,7 @@ mod obs_headers;
 mod obs_highlights;
 //mod obs_references; 
 mod formatting;
+mod archive; 
 mod tag_tree;
 mod html;
 mod utils;
