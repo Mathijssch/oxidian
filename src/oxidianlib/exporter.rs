@@ -2,54 +2,24 @@ use crate::oxidianlib::filesys::copy_directory;
 use crate::oxidianlib::utils::move_to;
 use log::{debug, info, warn};
 
-use super::filesys::{slugify_path, get_all_notes_exclude, self, write_to_file};
+use super::config::ExportConfig;
+use super::filesys::{slugify_path, get_all_notes_exclude, write_to_file};
 use super::link::Link;
 use super::load_static::HTML_TEMPLATE;
 use super::tag_tree::Tree;
 use super::{note, utils, archive};
-use super::obs_highlights::replace_obs_highlights;
-use figment::Error;
-use serde_derive::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 type Backlinks = HashMap<PathBuf, HashSet<Link>>;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ExportConfig {
-    // Attachment directory relative to the notebook directory.
-    pub attachment_dir: Option<PathBuf>,
-    pub template_dir: Option<PathBuf>,
-    pub static_dir: Option<PathBuf>,
-    pub generate_nav: bool,
-    pub generate_tag_index: bool,
-    pub generate_archive: bool
-}
-
-impl ExportConfig {
-    pub fn from_file<T: AsRef<Path>>(path: T) -> Result<ExportConfig, Error> {
-        let path = path.as_ref();
-        super::utils::read_config_from_file(path)
-    }
-}
-
-impl Default for ExportConfig {
-    fn default() -> Self {
-        ExportConfig {
-            attachment_dir: None,
-            template_dir: None,
-            static_dir: None,
-            generate_nav: true,
-            generate_tag_index: true,
-            generate_archive: true,
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct ExportStats {
     note_count: u32,
+    skipped_notes: u32,
+    skipped_attachments: u32,
     attachment_count: u32,
     build_time: std::time::Duration,
 }
@@ -58,6 +28,8 @@ impl ExportStats {
     pub fn new() -> Self {
         ExportStats {
             note_count: 0,
+            skipped_notes: 0,
+            skipped_attachments: 0,
             attachment_count: 0,
             build_time: std::time::Duration::new(0, 0),
         }
@@ -68,8 +40,18 @@ impl std::fmt::Display for ExportStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Build results\n----------------\n  Note Count: {}\n  Attachment Count: {}\n  Build Time: {:?}",
-            self.note_count, self.attachment_count, self.build_time
+            "
+Build results
+----------------
+Total nb of notes: {count} ({note_skip} skipped)
+Total attachment files: {attach_nb} ({attach_skip} skipped)
+Total Build Time: {time:?}
+",
+            count=self.note_count, 
+            attach_nb=self.attachment_count,
+            time=self.build_time, 
+            note_skip=self.skipped_notes,
+            attach_skip=self.skipped_attachments
         )
     }
 }
@@ -221,9 +203,13 @@ impl<'a> Exporter<'a> {
         None
     }
 
-    fn generate_archive_page_from_vec<'b>(&self, notes: &Vec<note::Note<'b>>) {
+    fn generate_archive_page_from_vec<'b>(&self, notes: &mut Vec<note::Note<'b>>) {
+        for note in &mut *notes {
+            note.cache_creation_time(self.cfg.creation_date.use_git);
+        }
+
         let archive_html = archive::generate_archive_page_html(
-            &notes, 
+            notes, 
             &self.input_dir,
             &self.get_tags_directory(), 
             &self.note_template
@@ -269,9 +255,12 @@ impl<'a> Exporter<'a> {
         
         // Load the template
         // -----------------
+        info!("Loading template ...");
+        subtime = Instant::now();
         if let Some(template_from_file) = self.load_template() { 
             self.note_template = template_from_file;
         };
+        info!("Loaded template in {:?}", Instant::now() - subtime);
 
         // Generate a tree of tags used in the notes
         // -----------------------------------------
@@ -283,17 +272,24 @@ impl<'a> Exporter<'a> {
         // ------------------------
         if self.cfg.generate_archive {
             info!("Generate archive page.");
-            self.generate_archive_page_from_vec(&iter_notes);
+            subtime = Instant::now();
+            self.generate_archive_page_from_vec(&mut iter_notes);
+            info!("Generated archive page in {:?}", Instant::now() - subtime)
         }
 
         // Compile the notes
         // -----------------
 
+        subtime = Instant::now();
+        info!("Compiling the notes ...");
         self.compile_notes_from_vec(&mut iter_notes, &backlinks);
+        info!("Compiled all notes in {:?}", Instant::now() - subtime);
 
         // Copy over all the static files 
         // ------------------------------
+        subtime = Instant::now();
         self.copy_static_files();
+        info!("Copied static files in {:?}", Instant::now() - subtime);
 
         // ALL DONE  ----------------------------------
         self.stats.build_time = start.elapsed();
@@ -315,7 +311,12 @@ impl<'a> Exporter<'a> {
             self.set_tag_nav(&tag_tree_html);
         }
         if self.cfg.generate_tag_index {
+            subtime = Instant::now();
             self.generate_tag_indices(&tags);
+            info!(
+                "Generated tag indices in {:?}",
+                Instant::now() - subtime
+            );
         }
 
     }
@@ -375,23 +376,48 @@ impl<'a> Exporter<'a> {
         }
     }
 
-    fn compile_note<'b>(&mut self, new_note: &mut note::Note<'b>, backlinks: &'b Backlinks) {
-        debug!("Processing note {:?}", new_note.path);
+    fn should_skip_note(&self, source_path: &Path, dst_path: &Path) -> bool {
+        // If we shouldn't skip unchanged notes, then don't skip.
+        if !self.cfg.performance.skip_unchanged_notes { return false }
+        // Otherwise, check if has not been changed. If that check fails, just don't skip it.
+        super::filesys::is_older(source_path, dst_path).unwrap_or(false) 
+    }
 
-        self.add_backlinks_to_note(new_note, backlinks);
+    /// Check if copying the target of the given link should be skipped.
+    fn should_skip_attachment(&self, link: &Link) -> bool {
+        // If we shouldn't skip cached attachments, then don't skip.
+        if !self.cfg.performance.skip_cached_attachments { return false }
+        // Otherwise, check if has not been changed. If that check fails, just don't skip it.
+        let (input_path, output_path) = self.get_paths_of_linked_attach(link);
+        super::filesys::is_older(&input_path, &output_path).unwrap_or(false) 
+    }
+
+
+    fn compile_note<'b>(&mut self, new_note: &mut note::Note<'b>, backlinks: &'b Backlinks) {
+
+        self.stats.note_count += 1;
 
         let output_path = self.input_to_output(&new_note.path, Some("html"));
-        debug!("exporting to {:?}", output_path);
+        let skip_note = self.should_skip_note(&new_note.path, &output_path);
 
-        for link in &new_note.links {
-            self.transfer_linked_file(&link);
+        for link in new_note.links.iter().filter(|l| l.is_attachment) {
+            self.stats.attachment_count += 1;
+            if !self.should_skip_attachment(&link){
+                self.transfer_linked_file(&link);
+            } else { self.stats.skipped_attachments += 1; }
         }
+        
+        if skip_note { 
+            self.stats.skipped_notes += 1;
+            return; 
+        }
+
+        debug!("Exporting note {:?}", new_note.path);
+        self.add_backlinks_to_note(new_note, backlinks);
 
         new_note
             .to_html(&output_path, &self.note_template)
             .expect("Failed to export note");
-
-        self.stats.note_count += 1;
     }
     
     fn input_to_output(&self, path: &Path, extension: Option<&str>) -> PathBuf {
@@ -401,10 +427,8 @@ impl<'a> Exporter<'a> {
             .unwrap_or_else(|_| self.output_dir.join(&output_path))
     }
 
-
-    fn transfer_linked_file(&mut self, link: &Link) {
-        // Only move linked attachments
-        if !link.is_attachment { return; }
+    ///Get the source and destination files for the linked attachment.
+    fn get_paths_of_linked_attach(&self, link: &Link) -> (PathBuf, PathBuf) {
 
         let output_path = self.input_to_output(&link.target, None);
 
@@ -412,13 +436,20 @@ impl<'a> Exporter<'a> {
             Some(attachment_dir) => self.input_dir.join(attachment_dir.join(&link.target)),
             None => self.input_dir.join(&link.target)
         };
+        (input_path, output_path)
+    }
 
+
+    fn transfer_linked_file(&mut self, link: &Link) {
+        // Only move linked attachments
+        if !link.is_attachment { return; }
+
+        let (input_path, output_path) = self.get_paths_of_linked_attach(link);
         if let Err(err) = std::fs::copy(&input_path, &output_path) {
             warn!(
                 "Could not copy the attachment from {:?} to {:?}! Got error {:?}",
                 input_path, output_path, err
             );
         }
-        self.stats.attachment_count += 1;
     }
 }

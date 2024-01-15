@@ -8,10 +8,14 @@ use super::link::Link;
 use super::note::Note;
 use super::html::{self, HtmlTag};
 use super::utils;
+use super::constants::MONTHS;
 
 type Year = i32;
 type Month = u32;
 type Calendar<'a> = BTreeMap<Year, BTreeMap<Month, Vec<&'a Note<'a>>>>;
+
+
+
 
 
 ///Make a collapsible list with the given `header` and `collapsed` being the collapsible content. 
@@ -37,7 +41,9 @@ fn make_collapsible(header: &str, collapsed: &str, count: Option<usize>, level: 
 
 
 fn render_note_entry(note: &Note, input_dir: &Path, tag_dir: &Path) -> String {
-    let date_str = note.get_creation_date().unwrap().format(r"%d/%m/%y");
+    let date_str = note.get_creation_date()
+        .unwrap()
+        .format(r"%d/%m/%y");
     let date_html = HtmlTag::span()
         .with_class("date-annot")
         .wrap(date_str);
@@ -59,7 +65,7 @@ fn render_note_entry(note: &Note, input_dir: &Path, tag_dir: &Path) -> String {
 
 fn build_month<'a>( name: &str, notes: &mut Vec<&'a Note<'a>>, input_dir: &Path, tag_dir: &Path) -> String {
     notes.sort_unstable_by_key(
-        |n| n.get_creation_date().unwrap()
+        |n| n.get_creation_date()
     );
 
     let links = notes.iter().rev()
@@ -87,7 +93,7 @@ pub fn generate_archive_page_html<'a>(
 
     info!("Building calendar based on notes");
     for note in notes {
-        let date_created = note.get_creation_date() 
+        let date_created = note.get_creation_date()
             .expect(&format!("Couldn't get creation date of note {}", note.title)); 
 
         calendar.entry(date_created.year())
@@ -106,7 +112,11 @@ pub fn generate_archive_page_html<'a>(
                                 let mut notes = months.get(mth).unwrap().clone();
                                 nb_notes_per_year += notes.len();
                                 HtmlTag::li().wrap(
-                                    build_month(&mth.to_string(), &mut notes, input_dir, tag_dir)
+                                    build_month(
+                                        &MONTHS.get(usize::try_from(*mth)
+                                                            .expect(&format!("Could not convert the month number {} to a usize.", mth)))
+                                                            .expect(&format!("Could not get the name of the {}th month!", mth)),
+                                        &mut notes, input_dir, tag_dir)
                                 )
                             }).collect::<Vec<String>>()
                             .join("\n");

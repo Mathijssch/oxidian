@@ -8,6 +8,7 @@ use oxidian::oxidianlib::exporter;
 use oxidian::oxidianlib::{
     constants::INDEX_FILE,
     errors, //::{self, IndexError},
+    config
 };
 
 use std::path::{Path, PathBuf};
@@ -114,7 +115,7 @@ fn build_vault(
     let config_file = config_file
         .unwrap_or(default_config_path); 
 
-    let export_config = exporter::ExportConfig::from_file(config_file)
+    let export_config = config::ExportConfig::from_file(config_file)
         .unwrap_or_default();
 
     let mut builder = exporter::Exporter::new(&input_dir, &output_dir, &export_config);

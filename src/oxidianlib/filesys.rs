@@ -1,5 +1,6 @@
 use log::{info, error, warn, debug};
 use super::{constants::NOTE_EXT, errors::NotePathError};
+use std::time::SystemTime;
 use std::{io, fs, ffi::OsStr};
 use std::fs::File;
 use std::io::Write;
@@ -126,8 +127,29 @@ pub fn slugify_path<'a> (path: &'a Path, extension: Option<&str>) -> Result<Path
     Ok(output_path)
 }
 
+/// Copy a directory from `src` to `dst`
 pub fn copy_directory<U: AsRef<Path>, T: AsRef<Path>>(src: U, dest: T) -> io::Result<()> {
     copy_directory_aux(src.as_ref(), dest.as_ref())
+}
+
+/// Return true if the modification date of `candidate` occurs before that of `reference`.
+/// 
+/// If `candidate` does not exist, then `false` is returned, because `candidate` still has to be
+/// created.
+/// Likewise, if `candidate` does exist, but `reference` does not, then `true` is returned.
+pub fn is_older(candidate: &Path, reference: &Path) -> io::Result<bool> {
+    if !candidate.is_file() { return Ok(false); }
+    if !reference.is_file() { return Ok(true); }
+    let candidate_time = get_modification_time(candidate)?;
+    let reference_time = get_modification_time(reference)?;
+    Ok( candidate_time <= reference_time )
+}
+
+
+/// Get the time that the given path was last modified.
+pub fn get_modification_time(path: &Path) -> Result<SystemTime, std::io::Error> {
+    let metadata = std::fs::metadata(path)?;
+    metadata.modified()
 }
 
 

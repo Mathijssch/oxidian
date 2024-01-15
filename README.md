@@ -10,11 +10,18 @@
 - [ ] (Link previews)
 - [x] Generate tag overview pages 
 - [x] Populate navbar
-- [ ] Generate timeline page
+- [ ] Unify the way the filenames for tags are generated. See [filenames for tags](#tags).
+- [x] Generate timeline page
 - [ ] Build search index
 - [ ] [performance]: cache the backlinks.
     - [ ] Loop over the recently modified notes, and for each, loop over the keys, and just add/remove accordingly.
 
+## Filenames for tags {#tags}
+
+Currently, the filenames for tags are generated separately in the code for the index 
+pages and the code for the archive pages. This is because the former is based on 
+the tree datastructure, instead of on the full string of the tag. 
+Just using the full path and having a single function that turns it into a filename is better.
 
 
 ## Disclaimer 

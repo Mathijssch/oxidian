@@ -4,6 +4,7 @@ pub mod link;
 pub mod note;
 pub mod filesys;
 pub mod exporter;
+pub mod config;
 //mod preprocessing;
 mod obs_comments;
 mod obs_admonitions; 

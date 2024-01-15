@@ -11,7 +11,7 @@ use super::html::HtmlTag;
 use super::wrap_pulldown_cmark::MarkdownParser;
 use pulldown_cmark::html;
 
-use super::exporter::ExportConfig;
+use super::config::ExportConfig;
 use figment::Error;
 use figment::{
     providers::{Format, Serialized, Toml},
@@ -71,7 +71,7 @@ pub fn render_full_tag_link(tag: &str, tag_dir: &Path) -> String {
         tag_name = component.clone();
         path.push(generate_tag_page_name(&component));
     } 
-    HtmlTag::a(path.to_str().unwrap()).wrap(tag_name)
+    HtmlTag::a(path.to_str().unwrap()).wrap(&capitalize_first(tag_name))
 }
 
 ///Get the time at which the file at the given path was added to a git repository.
@@ -82,6 +82,8 @@ pub fn get_git_creation_time<T: AsRef<Path>>(path: T) -> Option<NaiveDateTime> {
         .args(&["log", "-1", "--format=%ai", "--reverse"])
         .arg(path.as_ref())
         .output();
+
+    info!("Git output: {:?}", git_output);
 
     // Early escapes
     let output = match git_output {

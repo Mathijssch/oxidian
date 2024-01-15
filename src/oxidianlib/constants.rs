@@ -36,3 +36,18 @@ pub const AUDIO_EXT: [&str;6] = [
     "m4a",
     "webm",
 ];
+
+pub const MONTHS: [&str; 12] = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+];

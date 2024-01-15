@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, Error, Write};
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use log::{debug,info};
 use chrono::NaiveDate;
 
@@ -17,6 +16,7 @@ use super::{filesys, html, obs_tags};
 use super::{formatting, obs_admonitions, obs_comments, obs_links, obs_placeholders};
 use yaml_rust::Yaml;
 
+
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
 pub struct Note<'a> {
@@ -28,6 +28,7 @@ pub struct Note<'a> {
     placeholders: Vec<Sanitization>,
     pub title: String,
     pub backlinks: HashSet<&'a Link>,
+    creation_date: Option<NaiveDate> 
 }
 
 
@@ -128,6 +129,7 @@ impl<'a> Note<'a> {
             placeholders: vec![],
             tags: vec![],
             backlinks: HashSet::new(),
+            creation_date: None
         })
 
     }
@@ -162,6 +164,7 @@ impl<'a> Note<'a> {
         content = Self::replace_admonitions_by_placeholders(content, &mut placeholders);
         let title = Self::get_title(&path, frontmatter.as_ref());
 
+        //let creation_date = Self::compute_creation_date(&frontmatter, &path).unwrap();
         Ok(Note {
             path,
             links,
@@ -171,26 +174,34 @@ impl<'a> Note<'a> {
             placeholders,
             tags,
             backlinks: HashSet::new(),
+            creation_date: None
         })
+    }
+
+    pub fn cache_creation_time(&mut self, use_git: bool) {
+        if self.creation_date.is_some() { return }
+
+        if let Ok(date) = Self::compute_creation_date(&self.frontmatter, &self.path, use_git) {
+            self.creation_date = Some(date);
+        }
     }
 
     ///Get the creation date of the note in a given path.
     ///
     pub fn get_modification_time(&self) -> Result<std::time::SystemTime, std::io::Error> {
-        let metadata = std::fs::metadata(&self.path)?;
-        metadata.modified()
+        filesys::get_modification_time(&self.path)
     }
-    /////Get the creation date of the note in a given path.
-    /////
-    pub fn get_creation_date(&self) -> Result<NaiveDate, std::io::Error> {
-        info!("Getting creation date of {}", self.title);
 
+    fn compute_creation_date(
+        frontmatter: &Option<Yaml>, 
+        path: &Path,
+        use_git: bool
+    ) -> Result<NaiveDate, std::io::Error>  {
         // Try frontmatter 
-        if let Some(fm) = &self.frontmatter {
-            info!("Reading creation date from frontmatter.");
+        if let Some(fm) = frontmatter {
             if let Some(date) = fm["date_created"].as_str() {
-                debug!("Read date {} date from frontmatter of {}", date, self.title);
-                if let Ok(parsed) = NaiveDate::from_str(date) { 
+                debug!("Reading creation date from frontmatter.");
+                if let Ok(parsed) = NaiveDate::parse_from_str(date, "%d-%m-%Y") { 
                     return Ok(parsed);
                 };
                 info!("Failed to read creation date from frontmatter");
@@ -198,14 +209,34 @@ impl<'a> Note<'a> {
         }
 
         // Try to read the creation date from git.
-        if let Some(time) = utils::get_git_creation_time(&self.path) {
-            return Ok(time.date());
+        if use_git { 
+            if let Some(time) = utils::get_git_creation_time(path) {
+                return Ok(time.date());
+            } else { 
+                info!("Failed to read creation date from git");
+            };
         };
 
         // Try to work from the system time 
-        let modified_time = self.get_modification_time()?;
+        let modified_time = filesys::get_modification_time(path)?;
         Ok(utils::to_datetime(modified_time).date())
     }
+
+    pub fn get_creation_date(&self) -> Option<NaiveDate> {
+        self.creation_date
+    }
+
+    ///Get the creation date of the note in a given path.
+    ///
+    //pub fn compute_and_cache_creation(&mut self) -> Result<NaiveDate, std::io::Error> {
+    //    info!("Getting creation date of {}", self.title);
+    //    if let Some(date) = self.creation_date {
+    //        return Ok(date);
+    //    }
+    //    let creation_date = Self::compute_creation_date()?;
+    //    self.creation_date = Some(creation_date);
+    //    Ok(creation_date)
+    //}
 
     fn replace_links_by_placeholders(
         content: String,
