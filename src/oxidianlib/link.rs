@@ -6,7 +6,7 @@ use regex::Regex;
 
 lazy_static! {
     static ref OBSIDIAN_NOTE_LINK_RE: Regex = Regex::new(
-        r"^(?P<file>[^#\^|]*)??([#](?P<block>^)??(?P<section>.+?))??(\|(?P<label>.+?))??$"
+        r"^(?P<file>[^#\^|]*)??([#](?P<block>\^)??(?P<section>[^\^\]\[\#]+?))??(\|(?P<label>.+?))??$"
     )
     .unwrap();
 }
@@ -127,7 +127,15 @@ impl Link {
     pub fn link_text(&self) -> String {
         match &self.alias {
             Some(alias) => alias.clone(),
-            None => self.target.with_extension("").to_string_lossy().to_string(),
+            None => {
+                match self.link_type() {
+                    LinkType::Internal => { 
+                        if let Some(subtgt) = &self.subtarget { subtgt.to_string() }
+                        else { String::from(".") }
+                    }
+                    _ => self.target.with_extension("").to_string_lossy().to_string()
+                }
+            }
         }
     }
 
@@ -161,6 +169,7 @@ impl Link {
 
     fn needs_md_ext(path: &str, is_attachment: bool) -> bool {
         if is_attachment { return false; }
+        if path.len() == 0 { return false; } // Internal link 
 
         let target_path = Path::new(path);
         // Add markdown extension for notes.
@@ -244,7 +253,7 @@ mod tests {
     fn test_from_obsidian_standard() {
         let test_string = "link_to_note";
         let expected_link = Link {
-            target: PathBuf::from("link_to_note"),
+            target: PathBuf::from("link_to_note.md"),
             subtarget: None,
             alias: None,
             is_attachment: false,
@@ -259,8 +268,8 @@ mod tests {
     fn test_from_obsidian_blockref() {
         let test_string = "link_to_note#^someblock";
         let expected_link = Link {
-            target: PathBuf::from("link_to_note"),
-            subtarget: Some(String::from("^someblock")),
+            target: PathBuf::from("link_to_note.md"),
+            subtarget: Some(String::from("someblock")),
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
@@ -275,7 +284,7 @@ mod tests {
     fn test_from_obsidian_header() {
         let test_string = "link_to_note#someblock";
         let expected_link = Link {
-            target: PathBuf::from("link_to_note"),
+            target: PathBuf::from("link_to_note.md"),
             subtarget: Some(String::from("someblock")),
             alias: None,
             is_attachment: false,
@@ -290,7 +299,7 @@ mod tests {
     fn test_from_obsidian_with_spaces() {
         let test_string = "link to note";
         let expected_link = Link {
-            target: PathBuf::from("link to note"),
+            target: PathBuf::from("link to note.md"),
             subtarget: None,
             alias: None,
             is_attachment: false,
@@ -305,7 +314,7 @@ mod tests {
     fn test_from_obsidian_with_leading_spaces() {
         let test_string = " link to note";
         let expected_link = Link {
-            target: PathBuf::from("link to note"),
+            target: PathBuf::from("link to note.md"),
             subtarget: None,
             alias: None,
             is_attachment: false,
@@ -318,10 +327,10 @@ mod tests {
 
     #[test]
     fn test_from_obsidian_no_file() {
-        let test_string = "#^internal_id";
+        let test_string = "#internal_id";
         let expected_link = Link {
             target: PathBuf::from(""),
-            subtarget: Some("^internal_id".to_string()),
+            subtarget: Some("internal_id".to_string()),
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
@@ -335,7 +344,7 @@ mod tests {
     fn test_from_obsidian_with_trailing_spaces() {
         let test_string = "link to note ";
         let expected_link = Link {
-            target: PathBuf::from("link to note"),
+            target: PathBuf::from("link to note.md"),
             subtarget: None,
             alias: None,
             is_attachment: false,
@@ -350,7 +359,7 @@ mod tests {
     fn test_from_obsidian_with_alias() {
         let test_string = "link to note|the note I want to mention";
         let expected_link = Link {
-            target: PathBuf::from("link to note"),
+            target: PathBuf::from("link to note.md"),
             subtarget: None,
             alias: Some("the note I want to mention".to_string()),
             is_attachment: false,
@@ -364,7 +373,7 @@ mod tests {
     fn test_from_obsidian_with_subtarget() {
         let test_string = "link to note#header1|the note I want to mention";
         let expected_link = Link {
-            target: PathBuf::from("link to note"),
+            target: PathBuf::from("link to note.md"),
             subtarget: Some("header1".to_string()),
             alias: Some("the note I want to mention".to_string()),
             is_attachment: false,

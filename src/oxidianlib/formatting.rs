@@ -61,7 +61,7 @@ fn render_link(link: &Link, to_html: bool) -> String {
                 }
             } 
             if link.broken {
-                return render_link_aux(&target_abs, &link_text, to_html, Some(&vec!["broken"]));
+                return render_link_aux(&target_abs, &link_text, true, Some(&vec!["broken"]));
             } else {
                 return render_link_aux(&target_abs, &link_text, to_html, None);
             }
@@ -295,7 +295,7 @@ mod tests {
             .to_string();
         TestCase { 
             input_link: Link::from_obsidian_link("path_to_note|alias", false).unwrap(),
-            expected_output: format!("[alias](/{})", slug_name).to_string()
+            expected_output: format!("[alias]({})", slug_name).to_string()
         }
     }
     fn create_note_in_dir_link() -> TestCase {
@@ -305,7 +305,7 @@ mod tests {
             .to_string();
         TestCase { 
             input_link: Link::from_obsidian_link("subdir/path_to_note", false).unwrap(),
-            expected_output: format!("[subdir/path_to_note](/{})", slug_name).to_string()
+            expected_output: format!("[subdir/path_to_note]({})", slug_name).to_string()
         }
     }
     fn create_note_in_dir_sublink() -> TestCase {
@@ -315,7 +315,7 @@ mod tests {
             .to_string();
         TestCase { 
             input_link: Link::from_obsidian_link("subdir/path_to_note#heading|alias", false).unwrap(),
-            expected_output: format!("[alias](/{}#heading)", slug_name).to_string()
+            expected_output: format!("[alias]({}#heading)", slug_name).to_string()
         }
     }
     fn create_image_link() -> TestCase {
