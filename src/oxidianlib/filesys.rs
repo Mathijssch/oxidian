@@ -21,6 +21,11 @@ pub enum ResolvedPath {
 /// Otherwise, check if it is a valid path relative to `relative_to`. 
 /// Otherwise, check if `base_dir/path` exists. 
 pub fn resolve_path(path: &Path, relative_to: &Path, base_dir: &Path) -> ResolvedPath {
+    if path.components().next().is_none() { return ResolvedPath::Unchanged;  }// Empty path
+                                                                              // corresponds to an
+                                                                              // internal link.
+                                                                              // Don't look for a
+                                                                              // file 
     if path.is_absolute() {
         let stripped = path.strip_prefix("/").unwrap_or(path);
         if base_dir.join(stripped).exists() { return ResolvedPath::Unchanged; }
