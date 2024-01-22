@@ -150,9 +150,6 @@ impl<'a> Note<'a> {
 
         // Remove code blocks, and math.
         let (mut content, mut placeholders) = Self::remove_protected_elems(content);
-        // Get the labels of block-refs
-        let blockref_labels = Self::find_blockref_labels(&content);
-        content = Self::replace_blockrefs_by_placeholders(content, &mut placeholders, &blockref_labels);
         // Extract the links
         let mut links = Self::find_obsidian_links(&path, base_dir, &content);
         // Replace links by placeholders, since they may also contain protected symbols with
@@ -160,6 +157,9 @@ impl<'a> Note<'a> {
         let mut markdown_links = Self::find_markdown_links(&path, &base_dir, &content);
         links.append(&mut markdown_links);
         content = Self::replace_links_by_placeholders(content, &mut placeholders, &links);
+        // Get the labels of block-refs
+        let blockref_labels = Self::find_blockref_labels(&content);
+        content = Self::replace_blockrefs_by_placeholders(content, &mut placeholders, &blockref_labels);
         //content = Self::replace_links_by_placeholders(content, &mut placeholders, &markdown_links);
         let tags = Self::find_tags(&content);
         // Replace admonitions by placeholders, so they are not recognized as quotes by the
