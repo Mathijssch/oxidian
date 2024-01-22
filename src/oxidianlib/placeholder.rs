@@ -14,7 +14,7 @@ impl Sanitization {
     pub fn get_placeholder(&self) -> String {
         let mut hasher = DefaultHasher::new();
         self.hash(&mut hasher);
-        return format!("{}", hasher.finish());
+        return format!("{{{{ {} }}}}", hasher.finish());
     }
 
     pub fn from<T: Into<String> + Clone >(string: T) -> Self {
