@@ -150,11 +150,14 @@ impl<'a> Note<'a> {
 
         // Remove code blocks, and math.
         let (mut content, mut placeholders) = Self::remove_protected_elems(content);
+        // Get the labels of block-refs
+        let blockref_labels = Self::find_blockref_labels(&content);
+        content = Self::replace_blockrefs_by_placeholders(content, &mut placeholders, &blockref_labels);
         // Extract the links
-        let mut links = Self::find_obsidian_links(&content);
+        let mut links = Self::find_obsidian_links(&path, base_dir, &content);
         // Replace links by placeholders, since they may also contain protected symbols with
         // special meaning, like `^` and `#`.
-        let mut markdown_links = Self::find_markdown_links(&content);
+        let mut markdown_links = Self::find_markdown_links(&path, &base_dir, &content);
         links.append(&mut markdown_links);
         content = Self::replace_links_by_placeholders(content, &mut placeholders, &links);
         //content = Self::replace_links_by_placeholders(content, &mut placeholders, &markdown_links);
@@ -255,6 +258,21 @@ impl<'a> Note<'a> {
         content
     }
 
+    fn replace_blockrefs_by_placeholders(
+        content: String,
+        placeholders: &mut Vec<Sanitization>,
+        labels: &Vec<obs_labels::BlockLabel>,
+    ) -> String {
+        let mut content = content;
+        for label in labels {
+            let link_ph = Sanitization::new(label.source.to_string(),
+                                            html::HtmlTag::span().with_id(&label.label).wrap(""),
+                                            false);
+            content = content.replace(&link_ph.original, &link_ph.get_placeholder());
+            placeholders.push(link_ph);
+        }
+        content
+    }
     fn replace_admonitions_by_placeholders(
         content: String, 
         placeholders: &mut Vec<Sanitization>
