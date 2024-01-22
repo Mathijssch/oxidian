@@ -144,7 +144,7 @@ impl<'a> HtmlTag<'a>
 
     #[allow(dead_code)]
     pub fn with_id<T: Into<String>>(&mut self, class_name: T) -> &mut Self {
-        self.class.insert(class_name.into());
+        self.id = Some(class_name.into());
         self 
     }
 
