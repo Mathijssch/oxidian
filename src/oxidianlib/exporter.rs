@@ -64,27 +64,38 @@ pub struct Exporter<'a> {
     note_template: String,
 }
 
-fn iter_notes<'a, 'b>(
+fn get_all_notes<'b>(
     input_dir: &Path,
-    ignore: &'a Vec<PathBuf>,
-) -> impl Iterator<Item = note::Note<'b>> + 'a {
-    let all_paths = get_all_notes_exclude(input_dir, ignore);
+    ignore: &Vec<PathBuf>,
+) -> Vec<note::Note<'b>> { 
+    let all_paths = get_all_notes_exclude(&input_dir, ignore);
     let all_notes = all_paths.filter_map(|note_path| {
-        note_path.map_or(None, |path| Some(note::Note::new(path).unwrap()))
+        note_path.map_or(None, |path| Some(note::Note::new(path, &input_dir).unwrap()))
     });
-    return all_notes;
+    return all_notes.collect();
 }
 
-fn iter_notes_raw<'a, 'b>(
-    input_dir: &Path,
-    ignore: &'a Vec<PathBuf>,
-) -> impl Iterator<Item = note::Note<'b>> + 'a {
-    let all_paths = get_all_notes_exclude(input_dir, ignore);
-    let all_notes = all_paths.filter_map(|note_path| {
-        note_path.map_or(None, |path| Some(note::Note::new_raw(path).unwrap()))
-    });
-    return all_notes;
-}
+//fn iter_notes<'a, 'b>(
+//    input_dir: &Path,
+//    ignore: &'a Vec<PathBuf>,
+//) -> impl Iterator<Item = note::Note<'b>> + 'a {
+//    let all_paths = get_all_notes_exclude(&input_dir, ignore);
+//    let all_notes = all_paths.filter_map(|note_path| {
+//        note_path.map_or(None, |path| Some(note::Note::new(path, &input_dir).unwrap()))
+//    });
+//    return all_notes;
+//}
+
+//fn iter_notes_raw<'a, 'b>(
+//    input_dir: &Path,
+//    ignore: &'a Vec<PathBuf>,
+//) -> impl Iterator<Item = note::Note<'b>> + 'a {
+//    let all_paths = get_all_notes_exclude(&input_dir, ignore);
+//    let all_notes = all_paths.filter_map(|note_path| {
+//        note_path.map_or(None, |path| Some(note::Note::new_raw(path, &input_dir).unwrap()))
+//    });
+//    return all_notes;
+//}
 
 impl<'a> Exporter<'a> {
     pub fn new(input_dir: &'a Path, output_dir: &'a Path, cfg: &'a ExportConfig) -> Self {
@@ -116,18 +127,18 @@ impl<'a> Exporter<'a> {
         return backlinks;
     }
 
-    #[allow(dead_code)]
-    fn generate_backlinks(&self) -> Backlinks {
-        let mut backlinks: Backlinks = HashMap::new();
-        let ignore = Self::get_excluded(&self.input_dir, &self.cfg);
-        let mut notes_count = 0;
-        for note in iter_notes_raw(&self.input_dir, &ignore) {
-            self.update_backlinks(&mut backlinks, &note);
-            notes_count += 1;
-        }
-        debug!("Collected backlinks in {} notes", notes_count);
-        return backlinks;
-    }
+    //#[allow(dead_code)]
+    //fn generate_backlinks(&self) -> Backlinks {
+    //    let mut backlinks: Backlinks = HashMap::new();
+    //    let ignore = Self::get_excluded(&self.input_dir, &self.cfg);
+    //    let mut notes_count = 0;
+    //    for note in iter_notes_raw(&self.input_dir, &ignore) {
+    //        self.update_backlinks(&mut backlinks, &note);
+    //        notes_count += 1;
+    //    }
+    //    debug!("Collected backlinks in {} notes", notes_count);
+    //    return backlinks;
+    //}
 
     fn get_excluded(input_dir: &Path, cfg: &ExportConfig) -> Vec<PathBuf> {
         let mut result = vec![];
@@ -143,15 +154,15 @@ impl<'a> Exporter<'a> {
         result
     }
 
-    #[allow(dead_code)]
-    fn compile_notes(&mut self, backlinks: &Backlinks) {
-        let ignored = Self::get_excluded(&self.input_dir, &self.cfg);
-        debug!("Ignoring the following directories:\n{:?}", ignored);
-        let iter_notes = iter_notes(&self.input_dir, &ignored);
-        for mut note in iter_notes {
-            self.compile_note(&mut note, &backlinks)
-        }
-    }
+    //#[allow(dead_code)]
+    //fn compile_notes(&mut self, backlinks: &Backlinks) {
+    //    let ignored = Self::get_excluded(&self.input_dir, &self.cfg);
+    //    debug!("Ignoring the following directories:\n{:?}", ignored);
+    //    let iter_notes = iter_notes(&self.input_dir, &ignored);
+    //    for mut note in iter_notes {
+    //        self.compile_note(&mut note, &backlinks)
+    //    }
+    //}
 
     fn compile_notes_from_vec<'b>(
         &mut self,
@@ -234,7 +245,8 @@ impl<'a> Exporter<'a> {
         let mut subtime = Instant::now();
         let ignored = Self::get_excluded(&self.input_dir, &self.cfg);
         debug!("Ignoring the following directories:\n{:?}", ignored);
-        let mut iter_notes: Vec<note::Note> = iter_notes(&self.input_dir, &ignored).collect();
+        //let mut iter_notes: Vec<note::Note> = iter_notes(&self.input_dir, &ignored).collect();
+        let mut all_notes = get_all_notes(&self.input_dir, &ignored);
         info!("Loaded all notes in {:?}", Instant::now() - subtime);
 
         // Generate backlinks
@@ -242,7 +254,7 @@ impl<'a> Exporter<'a> {
         info!("Generating backlinks ...");
         subtime = Instant::now();
         //let backlinks = self.generate_backlinks();
-        let backlinks = self.generate_backlinks_from_notes(&iter_notes);
+        let backlinks = self.generate_backlinks_from_notes(&all_notes);
         info!("Recovered all backlinks in {:?}", Instant::now() - subtime);
 
         // TODO: test the compute/memory trade-off between
@@ -265,7 +277,7 @@ impl<'a> Exporter<'a> {
         // Generate a tree of tags used in the notes
         // -----------------------------------------
         if self.cfg.generate_nav || self.cfg.generate_tag_index {
-            self.process_tags_from_vec(&iter_notes);
+            self.process_tags_from_vec(&all_notes);
         }
 
         // Generate an archive page
@@ -273,7 +285,7 @@ impl<'a> Exporter<'a> {
         if self.cfg.generate_archive {
             info!("Generate archive page.");
             subtime = Instant::now();
-            self.generate_archive_page_from_vec(&mut iter_notes);
+            self.generate_archive_page_from_vec(&mut all_notes);
             info!("Generated archive page in {:?}", Instant::now() - subtime)
         }
 
@@ -282,7 +294,7 @@ impl<'a> Exporter<'a> {
 
         subtime = Instant::now();
         info!("Compiling the notes ...");
-        self.compile_notes_from_vec(&mut iter_notes, &backlinks);
+        self.compile_notes_from_vec(&mut all_notes, &backlinks);
         info!("Compiled all notes in {:?}", Instant::now() - subtime);
 
         // Copy over all the static files 
@@ -420,6 +432,8 @@ impl<'a> Exporter<'a> {
             .expect("Failed to export note");
     }
     
+    ///Translate a given path from the input directory to output directory.
+    ///Besides replacing the base directory, also slugify the path.
     fn input_to_output(&self, path: &Path, extension: Option<&str>) -> PathBuf {
         let output_path = self.slugify_path(&path, extension)
             .expect("Could not slugify path.");

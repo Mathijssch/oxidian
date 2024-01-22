@@ -22,9 +22,16 @@ pub fn tag_to_md(tag: &Tag) -> String {
 pub fn link_to_html(link: &Link) -> String { render_link(link, true) }
 pub fn link_to_md(link: &Link) -> String { render_link(link, false) }
 
-fn render_link_aux(tg: &str, text: &str, to_html: bool) -> String {
+fn render_link_aux(tg: &str, text: &str, to_html: bool, classes: Option<&Vec<&str>>) -> String {
     match to_html {
-        true => html::link(tg, text, ""),
+        true => { let mut a_tag = html::HtmlTag::a(tg); 
+            if let Some(classlist) = classes { 
+                for class in classlist {
+                    a_tag.with_class(*class);
+                };
+            };
+            a_tag.wrap(text)
+        },
         false => md_link(text, tg)
     }
 }
@@ -35,13 +42,16 @@ fn render_link(link: &Link, to_html: bool) -> String {
     let link_target_str = link.target.to_string_lossy().to_string();
     let link_text = link.link_text();
 
+    //let mut target_abs = "".to_string();
     match link.link_type() {
         LinkType::Note => {
             // Link to note should point to html page.
-            let target_rel = slugify_path(&link.target, Some("html")).unwrap();
-            let mut target_abs = prepend_slash(&target_rel)
-                .to_string_lossy()
-                .to_string();
+            let mut target_abs = slugify_path(&link.target, Some("html")).unwrap()
+                                    .to_string_lossy()
+                                    .to_string();
+            //let mut target_abs = prepend_slash(&target_rel)
+            //    .to_string_lossy()
+            //    .to_string();
             if let Some(subtarget) = &link.subtarget {
                 target_abs.push_str("#");
                 if subtarget.starts_with('^') {
@@ -50,7 +60,11 @@ fn render_link(link: &Link, to_html: bool) -> String {
                     target_abs.push_str(&slugify!(subtarget));
                 }
             } 
-            return render_link_aux(&target_abs, &link_text, to_html);
+            if link.broken {
+                return render_link_aux(&target_abs, &link_text, to_html, Some(&vec!["broken"]));
+            } else {
+                return render_link_aux(&target_abs, &link_text, to_html, None);
+            }
         },
         LinkType::Internal => {
             let mut target_abs = "".to_string();
@@ -58,7 +72,7 @@ fn render_link(link: &Link, to_html: bool) -> String {
                 target_abs.push_str("#");
                 target_abs.push_str(subtarget);
             } 
-            return render_link_aux(&target_abs, &link_text, to_html);
+            return render_link_aux(&target_abs, &link_text, to_html, None);
         },
         LinkType::External => {return md_link(&link_text, &link_target_str);},
         LinkType::Attachment(filetype) => {
@@ -69,7 +83,7 @@ fn render_link(link: &Link, to_html: bool) -> String {
             match filetype {
                 FileType::Image => {return html::img_tag(&target_file)},
                 FileType::Video => {return html::video_tag(&target_file);},
-                _ => { return render_link_aux(&link_target_str, &link_text, to_html); }
+                _ => { return render_link_aux(&link_target_str, &link_text, to_html, None); }
             }
         } 
         //_ => {return md_link(&link_text, &link_target_str);}

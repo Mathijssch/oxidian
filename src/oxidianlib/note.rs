@@ -7,12 +7,12 @@ use chrono::NaiveDate;
 
 //use super::formatting::link_to_md;
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
-use super::link::Link;
+use super::link::{Link, LinkType};
 use super::placeholder::Sanitization;
 use super::obs_headers::HeaderParser;
 use super::obs_highlights::replace_obs_highlights;
 use super::utils::{markdown_to_html, read_note_from_file, self};
-use super::{filesys, html, obs_tags};
+use super::{filesys, html, obs_tags, obs_labels};
 use super::{formatting, obs_admonitions, obs_comments, obs_links, obs_placeholders};
 use yaml_rust::Yaml;
 
@@ -72,7 +72,7 @@ impl<'a> Note<'a> {
 
     fn process_links(&self, mut content: String) -> String {
         for link in &self.links {
-            content = content.replace(&link.source_string, &formatting::link_to_md(link));
+            content = content.replace(&link.source_string, &formatting::link_to_html(link));
         }
         return content;
     }
@@ -103,7 +103,7 @@ impl<'a> Note<'a> {
     
     // Get a raw version of the notes, not meant for postprocessing, just for extraction of
     // information.
-    pub fn new_raw(path: PathBuf) -> Result<Self, std::io::Error> {
+    pub fn new_raw(path: PathBuf, ref_path: &Path) -> Result<Self, std::io::Error> {
         let mut content = Self::sanitize(&read_note_from_file(&path)?);
 
         let frontmatter = match extract_yaml_frontmatter(&content) {
@@ -117,7 +117,7 @@ impl<'a> Note<'a> {
             None => None
         };
 
-        let links = Self::find_obsidian_links(&content);
+        let links = Self::find_obsidian_links(&path, ref_path, &content);
         let title = Self::get_title(&path, frontmatter.as_ref());
 
         Ok(Note {
@@ -134,7 +134,7 @@ impl<'a> Note<'a> {
 
     }
 
-    pub fn new(path: PathBuf) -> Result<Self, std::io::Error> {
+    pub fn new(path: PathBuf, base_dir: &Path) -> Result<Self, std::io::Error> {
         let mut content = Self::sanitize(&read_note_from_file(&path)?);
 
         let frontmatter = match extract_yaml_frontmatter(&content) {
@@ -294,14 +294,33 @@ impl<'a> Note<'a> {
         return output;
     }
 
-    fn find_obsidian_links(content: &str) -> Vec<Link> {
-        obs_links::find_obsidian_links(content)
-    }
 
-    fn find_markdown_links(content: &str) -> Vec<Link> {
-        obs_links::find_markdown_links(content)
+    fn resolve_links(links: &mut Vec<Link>, ref_path: &Path, root_path: &Path) {
+        for link in links.iter_mut().filter(|l| l.link_type() == LinkType::Note ) {
+            match filesys::resolve_path(&link.target, ref_path, root_path) {
+                filesys::ResolvedPath::Unchanged => {},
+                filesys::ResolvedPath::Broken => { link.set_broken(true); },
+                filesys::ResolvedPath::Updated(new_path) => { link.set_target(new_path); }
+            }
+        }
     }
     
+    fn find_obsidian_links(ref_path: &Path, root_path: &Path, content: &str) -> Vec<Link> {
+        let mut links = obs_links::find_obsidian_links(content);
+        Self::resolve_links(&mut links, ref_path, root_path);
+        links
+    }
+
+    fn find_markdown_links(ref_path: &Path, root_path: &Path, content: &str) -> Vec<Link> {
+        let mut links = obs_links::find_markdown_links(content);
+        Self::resolve_links(&mut links, ref_path, root_path);
+        links
+    }
+    
+    fn find_blockref_labels(content: &str) -> Vec<obs_labels::BlockLabel> {
+        obs_labels::find_labels(content)
+    }
+
     fn find_tags(content: &str) -> Vec<obs_tags::Tag> {
         // TODO: Extract tags from the frontmatter
         obs_tags::find_tags(content)
@@ -395,11 +414,6 @@ fn strip_comments(note: &str) -> String {
         output.push('\n');
     }
     return output;
-}
-
-pub fn create_note(path: &str) -> Note {
-    let the_path = PathBuf::from(path);
-    Note::new(the_path).unwrap()
 }
 
 //pub fn print_text_event(e: &Event) {

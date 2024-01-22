@@ -1,4 +1,5 @@
 use log::{info, error, warn, debug};
+use super::utils::prepend_slash;
 use super::{constants::NOTE_EXT, errors::NotePathError};
 use std::time::SystemTime;
 use std::{io, fs, ffi::OsStr};
@@ -8,6 +9,29 @@ use slugify::slugify;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 ///Functions to interact with the file system
+
+
+pub enum ResolvedPath {
+    Broken,
+    Unchanged, 
+    Updated(PathBuf)
+}
+
+/// If `path` is absolute, check if it exists relative to `base_dir`.
+/// Otherwise, check if it is a valid path relative to `relative_to`. 
+/// Otherwise, check if `base_dir/path` exists. 
+pub fn resolve_path(path: &Path, relative_to: &Path, base_dir: &Path) -> ResolvedPath {
+    if path.is_absolute() {
+        let stripped = path.strip_prefix("/").unwrap_or(path);
+        if base_dir.join(stripped).exists() { return ResolvedPath::Unchanged; }
+    }
+    if relative_to.join(path).exists() { return ResolvedPath::Unchanged; }
+    if base_dir.join(path).exists() { return ResolvedPath::Updated(prepend_slash(path)); }
+
+    ResolvedPath::Broken
+}
+
+
 
 /// Create directory if it doesn't exist yet.
 pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
