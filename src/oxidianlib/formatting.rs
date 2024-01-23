@@ -1,4 +1,4 @@
-use log::debug;
+use log::{info, debug};
 use slugify::slugify;
 use super::{html, utils, filesys};
 use std::fs::File;
@@ -49,6 +49,7 @@ fn render_link(link: &Link, to_html: bool) -> String {
             let mut target_abs = slugify_path(&link.target, Some("html")).unwrap()
                                     .to_string_lossy()
                                     .to_string();
+            info!("Sluggified path {:?} to {:?}", link.target, target_abs);
             //let mut target_abs = prepend_slash(&target_rel)
             //    .to_string_lossy()
             //    .to_string();
@@ -185,6 +186,12 @@ impl Tree {
         return html_content;
     }
 
+    ///Build the index of a given tree of tags (recursively). 
+    ///
+    ///Arguments: 
+    ///  - `output_path`: path to the directory where the website is generated. 
+    ///  - `base_path`: directory where the tag pages are generated
+    ///  - `template`: html template to build a webpage.
     pub fn build_index_pages(
         &self, output_path: &Path, 
         base_path: &Path, template: &str
