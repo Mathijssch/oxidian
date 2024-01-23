@@ -177,6 +177,7 @@ pub fn prepend_slash<T: AsRef<Path>>(path: T) -> PathBuf {
     slash.join(path.as_ref())
 }
 
+
 /// Read the configuration of the application from a file at the given location.
 /// The values from `ExportConfig::default()` is used for the fields that weren't
 /// specified in the given file.

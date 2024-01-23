@@ -132,8 +132,16 @@ impl Link {
                     LinkType::Internal => { 
                         if let Some(subtgt) = &self.subtarget { subtgt.to_string() }
                         else { String::from(".") }
+                    },
+                    LinkType::Note =>
+                    {
+                        if let Some(filename) = self.target.with_extension("").file_name() {
+                            return filename.to_string_lossy().to_string();
+                        } else { 
+                            return self.target.with_extension("").to_string_lossy().to_string();
+                        }
                     }
-                    _ => self.target.with_extension("").to_string_lossy().to_string()
+                    _ => { return self.target.to_string_lossy().to_string() }
                 }
             }
         }
