@@ -24,7 +24,15 @@ pub struct PerformanceConfig {
     pub skip_unchanged_notes: bool, 
     ///Don't copy attachments whose modification dates are older than the those in the output
     ///folder.
-    pub skip_cached_attachments: bool
+    pub skip_cached_attachments: bool,
+    ///Search for linked files in the notes directory, when only a filename is given.
+    ///If you have many links in your notes that are given simply as filenames without a path, 
+    ///but your notes are actually stored in subdirectories, 
+    ///then we can try to locate them and point the links to the right files in the output.
+    ///This may come at a performance penalty, so use with caution. If all your links are fully
+    ///specified, this additional searching will never be triggered, so there is no performance hit
+    ///in this case.
+    pub search_for_links: bool
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -49,7 +57,8 @@ impl Default for PerformanceConfig {
     fn default() -> Self {
         PerformanceConfig { 
             skip_unchanged_notes: true,
-            skip_cached_attachments: true
+            skip_cached_attachments: true,
+            search_for_links: true
         }
     } 
 }
