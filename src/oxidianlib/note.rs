@@ -301,7 +301,7 @@ impl<'a> Note<'a> {
                 filesys::ResolvedPath::Unchanged => {},
                 filesys::ResolvedPath::Broken => { link.set_broken(true); },
                 filesys::ResolvedPath::Updated(new_path) => { 
-                    info!("Updating {:?} to {:?}", link.target, new_path);
+                    //info!("Updating {:?} to {:?}", link.target, new_path);
                     link.set_target(new_path); 
                 }
             }
@@ -391,21 +391,19 @@ impl<'a> Note<'a> {
             .collect();
 
         debug!("Note {} has {} backlinks", self.title, backlinks.len());
+        
+        let backlink_replacement = match backlinks.is_empty() {
+            true => "".to_string(),
+            false => html::HtmlTag::div().with_attr("style", "border: solid 1px; border-radius: 5px;")
+                         .wrap(html::ul(backlinks.iter(), "class=\"backlinks\""))
+        };
 
-        template_content
-            .lines()
-            .map(|line| line.replace(r"{{content}}", &html_content))
-            .map(|line| line.replace(r"{{title}}", &self.title))
-            .map(|line| {
-                line.replace(
-                    r"{{backlinks}}",
-                    &html::ul(backlinks.iter(), "class=\"backlinks\""),
-                )
-            })
-            .for_each(|line| {
-                writer.write_all(line.as_bytes()).unwrap();
-                writer.write_all(b"\n").unwrap();
-            });
+        write!(writer, "{}",
+            template_content.replace(r"{{content}}", &html_content)
+                            .replace(r"{{title}}", &self.title)
+                            .replace(r"{{backlinks}}", &backlink_replacement)
+        ).expect("Couldn't write note contents.");
+
         Ok(())
     }
 }

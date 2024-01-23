@@ -49,7 +49,7 @@ fn render_link(link: &Link, to_html: bool) -> String {
             let mut target_abs = slugify_path(&link.target, Some("html")).unwrap()
                                     .to_string_lossy()
                                     .to_string();
-            info!("Sluggified path {:?} to {:?}", link.target, target_abs);
+            //info!("Sluggified path {:?} to {:?}", link.target, target_abs);
             //let mut target_abs = prepend_slash(&target_rel)
             //    .to_string_lossy()
             //    .to_string();
