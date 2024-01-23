@@ -7,19 +7,27 @@
     -   First assume the link is relative and check existence of the file. 
     -   If not found, try absolute. 
     -   If still not found, then mark as a broken link.
-- [ ] Have an option to find a file, even if the full path is not specified correctly. 
+- [x] Have an option to find a file, even if the full path is not specified correctly. 
     - If the path consists of only one component, i.e., `filename`, do a recursive search over the input directory for `filename`. If it can be found, replace the path by this path. Otherwise, mark it as broken. 
     - This is best to be optional though, since it will make compilation slower.  
-    It remains to test how big the impact of this is.
+    ~~It remains to test how big the impact of this is.~~ It is quite significant.
 - [ ] (Link previews)
+- [ ] Handle size arguments in included figures
 - [x] Generate tag overview pages 
 - [x] Populate navbar
-- [ ] Unify the way the filenames for tags are generated. See [filenames for tags](#tags).
+- [~] Unify the way the filenames for tags are generated. See [filenames for tags](#tags).
 - [x] Generate timeline page
 - [ ] Build search index
 - [ ] [performance]: cache the backlinks.
     - [ ] Loop over the recently modified notes, and for each, loop over the keys, and just add/remove accordingly.
 - [ ] [performance]: Replace as many `String`s as possible with `Cow<Str>`s.
+- [x] Automatically refer to the tag index page, when a tag is detected.
+- [ ] Test if checklists are correctly handled.
+- [ ] Implement decent styling and frontend functionality in default template.
+    - [ ] Mathjax / KaTeX support 
+        - [ ] Convert .sty preamble to mathjax config
+    - [ ] Navbar styling
+    - [ ] Avoid FOUC
 
 ## Filenames for tags {#tags}
 

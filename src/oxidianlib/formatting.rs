@@ -1,5 +1,6 @@
-use log::{info, debug};
+use log::debug;
 use slugify::slugify;
+use super::constants::TAG_DIR;
 use super::{html, utils, filesys};
 use std::fs::File;
 use std::io::Write;
@@ -16,7 +17,11 @@ fn md_link(text: &str, target: &str) -> String {
 
 
 pub fn tag_to_md(tag: &Tag) -> String {
-    return html::wrap_html_raw(&tag.tag_path, "span", "class=\"tag\"");
+    return html::HtmlTag::span().with_class("tag")
+        .wrap(
+            html::HtmlTag::a(&utils::format_tag_path(&tag))
+            .wrap(&tag.tag_path)
+        );
 }
 
 pub fn link_to_html(link: &Link) -> String { render_link(link, true) }
@@ -94,8 +99,8 @@ fn render_link(link: &Link, to_html: bool) -> String {
 
 impl Tree {
  
-    pub fn to_html<T: AsRef<Path>> (&self, reference_path: T) -> String {
-        self.to_html_inner(false, reference_path.as_ref())
+    pub fn to_html(&self) -> String {
+        self.to_html_inner(false, &Path::new(TAG_DIR))
     }
 
 

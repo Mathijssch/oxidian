@@ -1,5 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use std::io::Read;
+use std::path::Component;
 use std::process::Command;
 use std::{
     fs::File,
@@ -7,7 +8,9 @@ use std::{
     time::SystemTime,
 };
 
+use super::constants::TAG_DIR;
 use super::html::HtmlTag;
+use super::obs_tags::Tag;
 use super::wrap_pulldown_cmark::MarkdownParser;
 use pulldown_cmark::html;
 
@@ -177,7 +180,6 @@ pub fn prepend_slash<T: AsRef<Path>>(path: T) -> PathBuf {
     slash.join(path.as_ref())
 }
 
-
 /// Read the configuration of the application from a file at the given location.
 /// The values from `ExportConfig::default()` is used for the fields that weren't
 /// specified in the given file.
@@ -212,4 +214,21 @@ pub fn remove_first_n_lines(input: &str, n: usize) -> String {
 
 pub fn generate_tag_page_name(name: &str) -> PathBuf {
     return PathBuf::from(format!("tag-{}.html", name));
+}
+
+pub fn format_tag_path(tag: &Tag) -> String {
+    let mut components: Vec<&str> = tag.tag_path.split('/').collect();
+    if let Some(last) = components.pop() {
+        let mut result = "/".to_string();
+        result.push_str(TAG_DIR);
+        result.push('/');
+        for comp in components {
+            result.push_str(comp);
+            result.push('/');
+        }
+        result.push_str(&generate_tag_page_name(last).to_string_lossy());
+        return result;
+    } else {
+        return tag.tag_path.clone();
+    }
 }

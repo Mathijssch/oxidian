@@ -2,6 +2,8 @@ pub const INDEX_FILE: &str = "index.md";
 
 pub const OBS_COMMENTS: &str = "%";
 
+pub const TAG_DIR: &str = "tags";
+
 pub const NOTE_EXT: [&str;2] = [
     "md",
     "html",

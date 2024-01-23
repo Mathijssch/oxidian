@@ -3,6 +3,7 @@ use crate::oxidianlib::utils::move_to;
 use log::{debug, info, warn};
 
 use super::config::ExportConfig;
+use super::constants::TAG_DIR;
 use super::filesys::{slugify_path, get_all_notes_exclude, write_to_file};
 use super::link::Link;
 use super::load_static::HTML_TEMPLATE;
@@ -225,7 +226,7 @@ impl<'a> Exporter<'a> {
         let archive_html = archive::generate_archive_page_html(
             notes, 
             &self.input_dir,
-            &self.get_tags_directory(), 
+            &Path::new(TAG_DIR), 
             &self.note_template
         ); 
         write_to_file(&self.get_archive_dir(), &archive_html);
@@ -318,7 +319,7 @@ impl<'a> Exporter<'a> {
 
         if self.cfg.generate_nav { 
             subtime = Instant::now();
-            let tag_tree_html = tags.to_html(self.get_tags_directory());
+            let tag_tree_html = tags.to_html();
             info!(
                 "Generated html for tag nav tree in {:?}",
                 Instant::now() - subtime
@@ -339,13 +340,9 @@ impl<'a> Exporter<'a> {
     fn generate_tag_indices(&self, tags: &Tree) {
         tags.build_index_pages(
             &self.output_dir,
-            &self.get_tags_directory(),
+            &Path::new(TAG_DIR),
             &self.note_template
         ).expect("Failed to generate tag index pages");
-    }
-
-    fn get_tags_directory(&self) -> PathBuf {
-        PathBuf::from("tags")
     }
 
     fn copy_static_files(&self) {
