@@ -19,6 +19,7 @@
 - [ ] Build search index
 - [ ] [performance]: cache the backlinks.
     - [ ] Loop over the recently modified notes, and for each, loop over the keys, and just add/remove accordingly.
+- [ ] [performance]: Replace as many `String`s as possible with `Cow<Str>`s.
 
 ## Filenames for tags {#tags}
 

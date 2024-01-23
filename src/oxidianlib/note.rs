@@ -103,7 +103,7 @@ impl<'a> Note<'a> {
     
     // Get a raw version of the notes, not meant for postprocessing, just for extraction of
     // information.
-    pub fn new_raw(path: PathBuf, ref_path: &Path) -> Result<Self, std::io::Error> {
+    pub fn new_raw(path: PathBuf, ref_path: &Path, find_files: bool, ignore: &Vec<PathBuf>) -> Result<Self, std::io::Error> {
         let mut content = Self::sanitize(&read_note_from_file(&path)?);
 
         let frontmatter = match extract_yaml_frontmatter(&content) {
@@ -117,7 +117,7 @@ impl<'a> Note<'a> {
             None => None
         };
 
-        let links = Self::find_obsidian_links(&path, ref_path, &content);
+        let links = Self::find_obsidian_links(&path, ref_path, &content, find_files, ignore);
         let title = Self::get_title(&path, frontmatter.as_ref());
 
         Ok(Note {
@@ -134,7 +134,7 @@ impl<'a> Note<'a> {
 
     }
 
-    pub fn new(path: PathBuf, base_dir: &Path) -> Result<Self, std::io::Error> {
+    pub fn new(path: PathBuf, base_dir: &Path, search_links: bool, ignore: &Vec<PathBuf>) -> Result<Self, std::io::Error> {
         let mut content = Self::sanitize(&read_note_from_file(&path)?);
 
         let frontmatter = match extract_yaml_frontmatter(&content) {
@@ -151,10 +151,10 @@ impl<'a> Note<'a> {
         // Remove code blocks, and math.
         let (mut content, mut placeholders) = Self::remove_protected_elems(content);
         // Extract the links
-        let mut links = Self::find_obsidian_links(&path, base_dir, &content);
+        let mut links = Self::find_obsidian_links(&path, base_dir, &content, search_links, ignore);
         // Replace links by placeholders, since they may also contain protected symbols with
         // special meaning, like `^` and `#`.
-        let mut markdown_links = Self::find_markdown_links(&path, &base_dir, &content);
+        let mut markdown_links = Self::find_markdown_links(&path, &base_dir, &content, search_links, ignore);
         links.append(&mut markdown_links);
         content = Self::replace_links_by_placeholders(content, &mut placeholders, &links);
         // Get the labels of block-refs
@@ -295,25 +295,28 @@ impl<'a> Note<'a> {
     }
 
 
-    fn resolve_links(links: &mut Vec<Link>, ref_path: &Path, root_path: &Path) {
+    fn resolve_links(links: &mut Vec<Link>, ref_path: &Path, root_path: &Path, search_links: bool, ignore: &Vec<PathBuf>) {
         for link in links.iter_mut().filter(|l| l.link_type() == LinkType::Note ) {
-            match filesys::resolve_path(&link.target, ref_path, root_path) {
+            match filesys::resolve_path(&link.target, ref_path, root_path, search_links, ignore) {
                 filesys::ResolvedPath::Unchanged => {},
                 filesys::ResolvedPath::Broken => { link.set_broken(true); },
-                filesys::ResolvedPath::Updated(new_path) => { link.set_target(new_path); }
+                filesys::ResolvedPath::Updated(new_path) => { 
+                    info!("Updating {:?} to {:?}", link.target, new_path);
+                    link.set_target(new_path); 
+                }
             }
         }
     }
     
-    fn find_obsidian_links(ref_path: &Path, root_path: &Path, content: &str) -> Vec<Link> {
+    fn find_obsidian_links(ref_path: &Path, root_path: &Path, content: &str, search_links: bool, ignore: &Vec<PathBuf>) -> Vec<Link> {
         let mut links = obs_links::find_obsidian_links(content);
-        Self::resolve_links(&mut links, ref_path, root_path);
+        Self::resolve_links(&mut links, ref_path, root_path, search_links, ignore);
         links
     }
 
-    fn find_markdown_links(ref_path: &Path, root_path: &Path, content: &str) -> Vec<Link> {
+    fn find_markdown_links(ref_path: &Path, root_path: &Path, content: &str, search_links: bool, ignore: &Vec<PathBuf>) -> Vec<Link> {
         let mut links = obs_links::find_markdown_links(content);
-        Self::resolve_links(&mut links, ref_path, root_path);
+        Self::resolve_links(&mut links, ref_path, root_path, search_links, ignore);
         links
     }
     

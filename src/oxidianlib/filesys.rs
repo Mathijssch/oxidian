@@ -1,50 +1,83 @@
-use log::{info, error, warn, debug};
 use super::utils::prepend_slash;
 use super::{constants::NOTE_EXT, errors::NotePathError};
-use std::time::SystemTime;
-use std::{io, fs, ffi::OsStr};
+use log::{debug, error, info, warn};
+use slugify::slugify;
 use std::fs::File;
 use std::io::Write;
-use slugify::slugify;
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
+use std::time::SystemTime;
+use std::{ffi::OsStr, fs, io};
+use walkdir::{WalkDir, DirEntry};
 ///Functions to interact with the file system
-
 
 pub enum ResolvedPath {
     Broken,
-    Unchanged, 
-    Updated(PathBuf)
+    Unchanged,
+    Updated(PathBuf),
 }
 
-/// If `path` is absolute, check if it exists relative to `base_dir`.
-/// Otherwise, check if it is a valid path relative to `relative_to`. 
-/// Otherwise, check if `base_dir/path` exists. 
-pub fn resolve_path(path: &Path, relative_to: &Path, base_dir: &Path) -> ResolvedPath {
-    if path.components().next().is_none() { return ResolvedPath::Unchanged;  }// Empty path
-                                                                              // corresponds to an
-                                                                              // internal link.
-                                                                              // Don't look for a
-                                                                              // file 
+/// Several options
+/// 1. `path` is empty. Do nothing.
+/// 2. `path` is an absolute path.
+///     - Check if the path exists relative to `base_dir`.
+///     - If not, flag it as broken.
+/// 3. `path` is not absolute and has at least one parent
+///     - Try to find it relative to `relative_to`.
+///     - If it cannot be found, then mark as broken.
+/// 4. `path` is not absolute and has no parents
+///     - Try to find it in `relative_to`. If found, do nothing.
+///     - If not found, and if `full_search`, then try to find it elsewhere in `base_dir`. If found, return full path.
+///     Otherwise, do nothing.
+pub fn resolve_path<'a>(
+    path: &Path,
+    relative_to: &Path,
+    base_dir: &Path,
+    full_search: bool,
+    ignore: &'a Vec<PathBuf>
+) -> ResolvedPath {
+    if path.components().next().is_none() {
+        return ResolvedPath::Unchanged;
+    } // Empty path
+      // corresponds to an
+      // internal link.
+      // Don't look for a
+      // file
     if path.is_absolute() {
         let stripped = path.strip_prefix("/").unwrap_or(path);
-        if base_dir.join(stripped).exists() { return ResolvedPath::Unchanged; }
+        if base_dir.join(stripped).exists() {
+            return ResolvedPath::Unchanged;
+        } else {
+            return ResolvedPath::Broken;
+        }
     }
-    if relative_to.join(path).exists() { return ResolvedPath::Unchanged; }
-    if base_dir.join(path).exists() { return ResolvedPath::Updated(prepend_slash(path)); }
 
+    let full = relative_to.join(path);
+    if base_dir.join(&full).exists() {
+        return ResolvedPath::Updated(prepend_slash(full));
+    }
+
+    if base_dir.join(path).exists() {
+        return ResolvedPath::Updated(prepend_slash(path));
+    }
+
+    //info!("Full search is {}, parent is {:?}, links is {:?}", full_search, path.parent(), path);
+    if full_search && just_filename(path) {
+        if let Some(full_path) = find_recursive(base_dir, path, ignore) {
+            return ResolvedPath::Updated(prepend_slash(&full_path));
+        }
+    }
     ResolvedPath::Broken
 }
 
-
+fn just_filename(path: &Path) -> bool { path.parent() == Some(Path::new("")) }
 
 /// Create directory if it doesn't exist yet.
 pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
     //let path = std::path::Path::new(dir_path);
     //
-    if path.components().count() == 0 { 
+    if path.components().count() == 0 {
         warn!("Trying to create empty path {:?}", path);
-        return Ok(()); 
+        return Ok(());
     };
     if !path.exists() {
         match fs::create_dir_all(path) {
@@ -63,11 +96,28 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
     }
 }
 
+///Find `path` in `base_dir` or a subdirectory thereof. 
+///If no match is found, None is returned.
+pub fn find_recursive<'a>(base_dir: &Path, path: &Path, ignore: &'a Vec<PathBuf>) -> Option<PathBuf> {
+    let filename = match path.file_name() {
+        Some(name) => name,
+        None => {
+            return None;
+        }
+    };
+    
+    let entries = walk_ignoring(base_dir, ignore);
+    for entry in entries {
+        if entry.file_name() == filename {
+            return Some(relative_to(entry.path(), base_dir).to_path_buf());
+        }
+    }
+    None
+}
+
 ///Return an iterator over notes in the given directory.
 pub fn get_all_notes(path: &Path) -> impl Iterator<Item = io::Result<PathBuf>> {
-    let entries = WalkDir::new(path).into_iter()
-        .filter_map(Result::ok)
-    ;
+    let entries = WalkDir::new(path).into_iter().filter_map(Result::ok);
 
     entries.filter_map(|entry| {
         let path = entry.into_path();
@@ -82,39 +132,54 @@ pub fn get_all_notes(path: &Path) -> impl Iterator<Item = io::Result<PathBuf>> {
     })
 }
 
-
 ///Return the given path `path`, but expressed relative to path `relative_to`.
 ///If `relative_to` is not a prefix of `path`, then a copy of `path` is returned.
 ///
-///This function also returns whether this was the case or not. 
+///This function also returns whether this was the case or not.
 ///This could be useful to determine whether the extracted piece has the be joined to `relative_to` again later.
-pub fn relative_to_with_info<T: AsRef<Path>, U: AsRef<Path>>( path: T, relative_to: U ) -> (PathBuf, bool) { 
+pub fn relative_to_with_info<T: AsRef<Path>, U: AsRef<Path>>(
+    path: T,
+    relative_to: U,
+) -> (PathBuf, bool) {
     let mut has_prefix = true;
     let path_ref = path.as_ref();
-    let internal_path = path_ref.strip_prefix(relative_to.as_ref())
-        .unwrap_or_else(|_| {has_prefix = false; return path_ref; });
+    let internal_path = path_ref
+        .strip_prefix(relative_to.as_ref())
+        .unwrap_or_else(|_| {
+            has_prefix = false;
+            return path_ref;
+        });
     (internal_path.to_owned(), has_prefix)
 }
 
 ///Return the given path `path`, but expressed relative to path `relative_to`.
 ///If `relative_to` is not a prefix of `path`, then a copy of `path` is returned.
-pub fn relative_to<T: AsRef<Path>, U: AsRef<Path>>( path: T, relative_to: U ) -> PathBuf { 
+pub fn relative_to<T: AsRef<Path>, U: AsRef<Path>>(path: T, relative_to: U) -> PathBuf {
     let path_ref = path.as_ref();
-    path_ref.strip_prefix(relative_to.as_ref())
-        .unwrap_or_else(|_| path_ref ).to_owned()
+    path_ref
+        .strip_prefix(relative_to.as_ref())
+        .unwrap_or_else(|_| path_ref)
+        .to_owned()
 }
 
-pub fn get_all_notes_exclude<'a>(path: &Path, ignore: &'a Vec<PathBuf>) -> impl Iterator<Item = io::Result<PathBuf>> + 'a {
-    let entries = WalkDir::new(path).into_iter()
+pub fn walk_ignoring<'a>(dir: &Path, ignoring: &'a Vec<PathBuf>) -> impl Iterator<Item=DirEntry> + 'a {
+    WalkDir::new(dir)
+        .into_iter()
         .filter_entry(|entry| {
-            let result = !ignore.iter().any(|ignore_dir| entry.path() == ignore_dir ); 
-            if !result {
-                info!("Ignoring {:?}", entry);
-            }
-            return result
+            let result = !ignoring.iter().any(|ignore_dir| entry.path() == ignore_dir);
+            //if !result {
+            //    info!("Ignoring {:?}", entry);
+            //}
+            return result;
         })
         .filter_map(Result::ok)
-    ;
+}
+
+pub fn get_all_notes_exclude<'a>(
+    path: &Path,
+    ignore: &'a Vec<PathBuf>,
+) -> impl Iterator<Item = io::Result<PathBuf>> + 'a {
+    let entries = walk_ignoring(path, ignore);
 
     entries.filter_map(|entry| {
         let path = entry.into_path();
@@ -130,13 +195,16 @@ pub fn get_all_notes_exclude<'a>(path: &Path, ignore: &'a Vec<PathBuf>) -> impl 
 }
 
 /// Convert the path to a markdown file to a slugified version of the path with either
-/// * The given extension, 
+/// * The given extension,
 /// * The original extension
 ///
-pub fn slugify_path<'a> (path: &'a Path, extension: Option<&str>) -> Result<PathBuf, NotePathError<&'a Path>> {
+pub fn slugify_path<'a>(
+    path: &'a Path,
+    extension: Option<&str>,
+) -> Result<PathBuf, NotePathError<&'a Path>> {
     let ext = match extension {
         Some(e) => Some(OsStr::new(e)),
-        None => {path.extension()}
+        None => path.extension(),
     };
 
     let mut output_path = PathBuf::new();
@@ -145,11 +213,14 @@ pub fn slugify_path<'a> (path: &'a Path, extension: Option<&str>) -> Result<Path
         match component {
             std::path::Component::Normal(os_str) => {
                 output_path.push(slugify!(&os_str.to_string_lossy().as_ref()));
+            }, 
+            std::path::Component::RootDir => {
+                output_path.push("/");
             },
-            _ => {} // Ignore other components like RootDir, Prefix, etc.
+            _ => {} // Ignore other components like Prefix, etc.
         }
     }
-    
+
     if let Some(ext) = ext {
         output_path = output_path.with_extension(ext);
     }
@@ -162,18 +233,21 @@ pub fn copy_directory<U: AsRef<Path>, T: AsRef<Path>>(src: U, dest: T) -> io::Re
 }
 
 /// Return true if the modification date of `candidate` occurs before that of `reference`.
-/// 
+///
 /// If `candidate` does not exist, then `false` is returned, because `candidate` still has to be
 /// created.
 /// Likewise, if `candidate` does exist, but `reference` does not, then `true` is returned.
 pub fn is_older(candidate: &Path, reference: &Path) -> io::Result<bool> {
-    if !candidate.is_file() { return Ok(false); }
-    if !reference.is_file() { return Ok(true); }
+    if !candidate.is_file() {
+        return Ok(false);
+    }
+    if !reference.is_file() {
+        return Ok(true);
+    }
     let candidate_time = get_modification_time(candidate)?;
     let reference_time = get_modification_time(reference)?;
-    Ok( candidate_time <= reference_time )
+    Ok(candidate_time <= reference_time)
 }
-
 
 /// Get the time that the given path was last modified.
 pub fn get_modification_time(path: &Path) -> Result<SystemTime, std::io::Error> {
@@ -181,14 +255,14 @@ pub fn get_modification_time(path: &Path) -> Result<SystemTime, std::io::Error> 
     metadata.modified()
 }
 
-
 ///Write the given string to a file at the given path.
 pub fn write_to_file(path: &Path, content: &str) {
     let file = File::create(&path).expect("Could not create path!");
     let mut writer = std::io::BufWriter::new(file);
-    writer.write_all(content.as_bytes()).expect("Could not write content to file");
+    writer
+        .write_all(content.as_bytes())
+        .expect("Could not write content to file");
 }
-
 
 ///Recursively copy directory `src` to `dest`.
 fn copy_directory_aux(src: &Path, dest: &Path) -> io::Result<()> {
@@ -219,15 +293,13 @@ fn copy_directory_aux(src: &Path, dest: &Path) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::{DirBuilder,File};
+    use std::fs::{DirBuilder, File};
     use tempfile::tempdir;
 
-    
     struct TestCase {
         dir: tempfile::TempDir,
-        valid_files: Vec<PathBuf>
+        valid_files: Vec<PathBuf>,
     }
-
 
     /// Test case with a flat directory structure
     fn create_flat_test_case() -> TestCase {
@@ -243,11 +315,8 @@ mod tests {
         File::create(&html_file_path).expect("Failed to create .html file");
         File::create(&txt_file_path).expect("Failed to create .txt file");
 
-
         let valid_files = vec![md_file_path, html_file_path];
-        TestCase {
-            dir, valid_files
-        }
+        TestCase { dir, valid_files }
     }
 
     /// Test case with a leveled directory structure
@@ -257,7 +326,9 @@ mod tests {
 
         let subdir_path = dir_path.join("notes");
         let dir_builder = DirBuilder::new();
-        let _subdir = dir_builder.create(&subdir_path).expect("Failed to create subdir");
+        let _subdir = dir_builder
+            .create(&subdir_path)
+            .expect("Failed to create subdir");
 
         let md_file_path = dir_path.join("sample.md");
         let html_file_path = dir_path.join("sample.html");
@@ -269,9 +340,7 @@ mod tests {
         File::create(&md_file_subdir_path).expect("Failed to create nested .md file");
 
         let valid_files = vec![md_file_path, html_file_path, md_file_subdir_path];
-        TestCase {
-            dir, valid_files
-        }
+        TestCase { dir, valid_files }
     }
 
     fn run_test(test_case: TestCase) {
@@ -283,18 +352,17 @@ mod tests {
             .expect("Failed to filter files");
 
         // Check if the function found the correct files
-        assert_eq!(result.len(), test_case.valid_files.len()); 
+        assert_eq!(result.len(), test_case.valid_files.len());
         for valid_file in test_case.valid_files {
             assert!(result.contains(&valid_file.file_name().unwrap().to_owned()));
         }
     }
 
-
     #[test]
     fn test_filter_markdown_html_files() {
         run_test(create_flat_test_case());
     }
-    
+
     #[test]
     fn test_nested_directory() {
         run_test(create_nested_test_case());

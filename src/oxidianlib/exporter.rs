@@ -67,10 +67,13 @@ pub struct Exporter<'a> {
 fn get_all_notes<'b>(
     input_dir: &Path,
     ignore: &Vec<PathBuf>,
+    search_for_linked_files: bool
 ) -> Vec<note::Note<'b>> { 
     let all_paths = get_all_notes_exclude(&input_dir, ignore);
     let all_notes = all_paths.filter_map(|note_path| {
-        note_path.map_or(None, |path| Some(note::Note::new(path, &input_dir).unwrap()))
+        note_path.map_or(None, |path| Some(note::Note::new(
+                    path, &input_dir, 
+                    search_for_linked_files, ignore).unwrap()))
     });
     return all_notes.collect();
 }
@@ -246,7 +249,7 @@ impl<'a> Exporter<'a> {
         let ignored = Self::get_excluded(&self.input_dir, &self.cfg);
         debug!("Ignoring the following directories:\n{:?}", ignored);
         //let mut iter_notes: Vec<note::Note> = iter_notes(&self.input_dir, &ignored).collect();
-        let mut all_notes = get_all_notes(&self.input_dir, &ignored);
+        let mut all_notes = get_all_notes(&self.input_dir, &ignored, self.cfg.performance.search_for_links);
         info!("Loaded all notes in {:?}", Instant::now() - subtime);
 
         // Generate backlinks
