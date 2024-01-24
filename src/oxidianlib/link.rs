@@ -13,6 +13,23 @@ lazy_static! {
 
 use super::{errors, note::Note, utils::prepend_slash};
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Dimensions {
+    pub width: u32, 
+    pub height: Option<u32>
+}
+
+impl Dimensions {
+    pub fn new(width: u32) -> Self {
+        Dimensions { width, height: None }
+    }
+
+    pub fn new_with_details(width: u32, height: u32) -> Self { 
+        Dimensions { width, height: Some(height) }
+    }
+}
+
+
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Link {
     pub target: PathBuf,
@@ -21,6 +38,7 @@ pub struct Link {
     pub source_string: String,
     pub is_attachment: bool,
     pub broken: bool,
+    pub dims: Option<Dimensions>
 }
 
 #[derive(Debug, PartialEq)]
@@ -109,7 +127,8 @@ impl Link {
             alias: Some(name.into()),
             source_string: "".to_string(),
             is_attachment: false,
-            broken: false
+            broken: false, 
+            dims: None
         }
     }
 
@@ -120,7 +139,8 @@ impl Link {
             alias: Some(note.title.clone()),
             source_string: "".to_string(),
             is_attachment: false,
-            broken: false
+            broken: false,
+            dims: None,
         }
     }
 
@@ -171,7 +191,8 @@ impl Link {
             alias: alias.map(|s| s.into()),
             source_string: md_link.into(),
             is_attachment,
-            broken: false
+            broken: false,
+            dims: None
         }
     }
 
@@ -208,6 +229,24 @@ impl Link {
             false => PathBuf::from(target)
         };
 
+        let dims = match is_attachment {
+            true => {
+                if let Some(v) = captures.name("label") {
+                        let dimensions_raw: Vec<&str> = v.as_str().split('x').collect();
+                        if let Some(width) = dimensions_raw.get(0) {
+                            if let Some(w) = width.parse::<u32>().ok() {
+                                if let Some(h) = dimensions_raw.get(1) {
+                                    Some(Dimensions { width: w, height: h.parse::<u32>().ok() } )
+                                } else {
+                                    Some(Dimensions::new(w))
+                                }
+                            } else { None }
+                        } else { None }
+                    }
+                else { None }
+            },
+            false => None
+        };
         let alias = captures.name("label")
                     .map(|v| v.as_str().to_string());
         let subtarget = captures
@@ -222,7 +261,8 @@ impl Link {
             alias,
             is_attachment,
             source_string: source_str,
-            broken: false
+            broken: false, 
+            dims
         })
     }
 }
@@ -247,7 +287,8 @@ impl<'a> From<Note<'a>> for Link {
             alias: Some(note.title.clone()),
             source_string: "".to_string(),
             is_attachment: false,
-            broken: false
+            broken: false,
+            dims: None
         }
     }
 }
@@ -266,7 +307,8 @@ mod tests {
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken: false
+            broken: false, 
+            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -281,7 +323,8 @@ mod tests {
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken: false
+            broken: false,
+            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -297,7 +340,8 @@ mod tests {
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken: false
+            broken: false, 
+            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -312,7 +356,8 @@ mod tests {
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken: false
+            broken: false, 
+            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -327,7 +372,8 @@ mod tests {
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken: false
+            broken: false,
+            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -342,7 +388,8 @@ mod tests {
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken: false
+            broken: false,
+            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -357,7 +404,8 @@ mod tests {
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken: false
+            broken: false, 
+            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -372,7 +420,8 @@ mod tests {
             alias: Some("the note I want to mention".to_string()),
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken:false
+            broken:false,
+            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -386,7 +435,8 @@ mod tests {
             alias: Some("the note I want to mention".to_string()),
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken:false
+            broken:false, 
+            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
