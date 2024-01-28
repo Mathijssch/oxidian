@@ -12,12 +12,12 @@
     - This is best to be optional though, since it will make compilation slower.  
     ~~It remains to test how big the impact of this is.~~ It is quite significant.
 - [ ] (Link previews)
-- [ ] Handle size arguments in included figures
+- [x] Handle size arguments in included figures
 - [x] Generate tag overview pages 
 - [x] Populate navbar
 - [~] Unify the way the filenames for tags are generated. See [filenames for tags](#tags).
 - [x] Generate timeline page
-- [ ] Build search index
+- [ ] Build search index: see `search.rs`. 
 - [ ] [performance]: cache the backlinks.
     - [ ] Loop over the recently modified notes, and for each, loop over the keys, and just add/remove accordingly.
 - [ ] [performance]: Replace as many `String`s as possible with `Cow<Str>`s.
