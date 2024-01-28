@@ -1,6 +1,5 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use std::io::Read;
-use std::path::Component;
 use std::process::Command;
 use std::{
     fs::File,
@@ -10,6 +9,7 @@ use std::{
 
 use super::constants::TAG_DIR;
 use super::html::HtmlTag;
+use super::link::Dimensions;
 use super::obs_tags::Tag;
 use super::wrap_pulldown_cmark::MarkdownParser;
 use pulldown_cmark::html;
@@ -231,4 +231,30 @@ pub fn format_tag_path(tag: &Tag) -> String {
     } else {
         return tag.tag_path.clone();
     }
+}
+
+
+
+/// Parse dimensions, given in the form 
+/// - \d: width in pixels
+/// - \d\s?x\s?\d: width times height in pixels.
+///
+/// If the given string is not in the correct form, then return None
+pub fn parse_dims<T: AsRef<str>>(alias: T) -> Option<Dimensions> {
+    parse_dims_inner(alias.as_ref())
+}
+
+/// See [[parse_dims]].
+fn parse_dims_inner(alias: &str) -> Option<Dimensions> {
+    let dimensions_raw: Vec<&str> = alias.split('x').collect();
+    if let Some(width) = dimensions_raw.get(0) {
+        if let Some(w) = width.parse::<u32>().ok() {
+            if let Some(h) = dimensions_raw.get(1) {
+                return Some( Dimensions { width: w, height: h.parse::<u32>().ok() } );
+            } else {
+                return Some( Dimensions::new(w) );
+            }
+        }
+    }
+    None
 }
