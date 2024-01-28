@@ -13,6 +13,13 @@ pub struct MissingIndexError<T: fmt::Debug>(pub T, pub T);
 #[error("The directory `{0:?}` does not exist.")]
 pub struct MissingDirectoryError<T: fmt::Debug>(pub T);
 
+#[derive(Error, Debug)]
+pub enum GetAgeError<T: fmt::Debug> {
+    #[error("Candidate file {0:?} does not exist")]
+    MissingFileError(T),
+    #[error(transparent)]
+    ModificationTimeError(#[from] std::io::Error),
+}
 
 #[derive(Error, Debug)]
 pub enum InitializationError<T: fmt::Debug> {
