@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use clap::builder::OsStr;
-use super::constants::NOTE_EXT;
+use super::{constants::NOTE_EXT, utils};
 
 use regex::Regex;
 
@@ -38,7 +38,6 @@ pub struct Link {
     pub source_string: String,
     pub is_attachment: bool,
     pub broken: bool,
-    pub dims: Option<Dimensions>
 }
 
 #[derive(Debug, PartialEq)]
@@ -128,7 +127,6 @@ impl Link {
             source_string: "".to_string(),
             is_attachment: false,
             broken: false, 
-            dims: None
         }
     }
 
@@ -140,7 +138,6 @@ impl Link {
             source_string: "".to_string(),
             is_attachment: false,
             broken: false,
-            dims: None,
         }
     }
 
@@ -192,7 +189,6 @@ impl Link {
             source_string: md_link.into(),
             is_attachment,
             broken: false,
-            dims: None
         }
     }
 
@@ -209,6 +205,16 @@ impl Link {
         } else { return true; } 
         return false;
     }
+
+    pub fn parse_dims(&self) -> Option<Dimensions> {
+        if !self.is_attachment { return None; }
+        let alias = match &self.alias {
+            None => { return None; },
+            Some(a) => a
+        };
+        utils::parse_dims(alias)
+    }
+
 
     ///Construct a new [Link] from an Obsidian-styled reference
     pub fn from_obsidian_link(
@@ -229,24 +235,6 @@ impl Link {
             false => PathBuf::from(target)
         };
 
-        let dims = match is_attachment {
-            true => {
-                if let Some(v) = captures.name("label") {
-                        let dimensions_raw: Vec<&str> = v.as_str().split('x').collect();
-                        if let Some(width) = dimensions_raw.get(0) {
-                            if let Some(w) = width.parse::<u32>().ok() {
-                                if let Some(h) = dimensions_raw.get(1) {
-                                    Some(Dimensions { width: w, height: h.parse::<u32>().ok() } )
-                                } else {
-                                    Some(Dimensions::new(w))
-                                }
-                            } else { None }
-                        } else { None }
-                    }
-                else { None }
-            },
-            false => None
-        };
         let alias = captures.name("label")
                     .map(|v| v.as_str().to_string());
         let subtarget = captures
@@ -254,7 +242,10 @@ impl Link {
             .map(|v| v.as_str().to_string())
             .and_then(|name| Some(name.trim().to_owned()));
 
-        let source_str = format!("[[{}]]", obs_link).to_string();
+        let exclamation = match is_attachment {
+            true => "!", false => ""
+        };
+        let source_str = format!("{}[[{}]]", exclamation, obs_link).to_string();
         Ok(Link {
             target: target_path,
             subtarget,
@@ -262,7 +253,6 @@ impl Link {
             is_attachment,
             source_string: source_str,
             broken: false, 
-            dims
         })
     }
 }
@@ -288,7 +278,6 @@ impl<'a> From<Note<'a>> for Link {
             source_string: "".to_string(),
             is_attachment: false,
             broken: false,
-            dims: None
         }
     }
 }
@@ -308,7 +297,6 @@ mod tests {
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
             broken: false, 
-            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -324,7 +312,6 @@ mod tests {
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
             broken: false,
-            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -341,7 +328,6 @@ mod tests {
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
             broken: false, 
-            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -357,7 +343,6 @@ mod tests {
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
             broken: false, 
-            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -373,7 +358,6 @@ mod tests {
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
             broken: false,
-            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -389,7 +373,6 @@ mod tests {
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
             broken: false,
-            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -405,7 +388,6 @@ mod tests {
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
             broken: false, 
-            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -421,7 +403,6 @@ mod tests {
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
             broken:false,
-            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -436,7 +417,6 @@ mod tests {
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
             broken:false, 
-            dims: None
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);

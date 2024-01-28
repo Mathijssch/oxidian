@@ -19,8 +19,7 @@ use yaml_rust::Yaml;
 
 #[allow(dead_code)]
 #[derive(Debug,Clone)]
-pub struct Note<'a> {
-    pub path: PathBuf,
+pub struct Note<'a> { pub path: PathBuf,
     pub links: Vec<Link>,
     pub frontmatter: Option<Yaml>,
     pub tags: Vec<obs_tags::Tag>,
@@ -320,6 +319,11 @@ impl<'a> Note<'a> {
         links
     }
     
+    /// Find labels used for blockrefs: `^<alias>`. These get translated into empty spans with
+    /// corresponding id `<alias>`. 
+    ///
+    /// ## Example
+    /// `^124` -> `<span id="124"></span>`
     fn find_blockref_labels(content: &str) -> Vec<obs_labels::BlockLabel> {
         obs_labels::find_labels(content)
     }
@@ -329,11 +333,17 @@ impl<'a> Note<'a> {
         obs_tags::find_tags(content)
     }
 
+    ///Remove protected pieces of content, like math and code. 
+    ///
+    ///These should be interpreted literally and should be ignored when scanning for 
+    ///tags, links etc. Therefore, these elements are detected first and replaced with a
+    ///hash serving as a placeholder.
     fn remove_protected_elems(content: String) -> (String, Vec<Sanitization>) {
         // Remove math elements and code
         obs_placeholders::disambiguate_protected(&content)
     }
 
+    ///Get rid of the comments and/or other unwanted pieces of text.
     fn sanitize(content: &str) -> String {
         return strip_comments(content);
     }

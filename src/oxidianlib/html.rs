@@ -148,9 +148,8 @@ impl<'a> HtmlTag<'a>
         self 
     }
 
-    #[allow(dead_code)]
-    pub fn with_attr<K: Into<String>, V: Into<String>>(&mut self, attr_name: K, attr_value: V) -> &mut Self { 
-        self.options.insert(attr_name.into(), attr_value.into());
+    pub fn with_attr<K: Into<String>, V: std::fmt::Display>(&mut self, attr_name: K, attr_value: V) -> &mut Self { 
+        self.options.insert(attr_name.into(), format!("{}", attr_value));
         self
     }
 

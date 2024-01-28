@@ -1,7 +1,9 @@
+use super::errors::GetAgeError;
 use super::utils::prepend_slash;
 use super::{constants::NOTE_EXT, errors::NotePathError};
 use log::{debug, error, info, warn};
 use slugify::slugify;
+use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -234,15 +236,13 @@ pub fn copy_directory<U: AsRef<Path>, T: AsRef<Path>>(src: U, dest: T) -> io::Re
 
 /// Return true if the modification date of `candidate` occurs before that of `reference`.
 ///
-/// If `candidate` does not exist, then `false` is returned, because `candidate` still has to be
-/// created.
-/// Likewise, if `candidate` does exist, but `reference` does not, then `true` is returned.
-pub fn is_older(candidate: &Path, reference: &Path) -> io::Result<bool> {
+/// If either `candidate` or `reference` does not exist, an error is returned.
+pub fn is_older<'a>(candidate: &'a Path, reference: &'a Path) -> Result<bool, GetAgeError<&'a Path>> {
     if !candidate.is_file() {
-        return Ok(false);
+        return Err(GetAgeError::MissingFileError(candidate));
     }
     if !reference.is_file() {
-        return Ok(true);
+        return Err(GetAgeError::MissingFileError(reference));
     }
     let candidate_time = get_modification_time(candidate)?;
     let reference_time = get_modification_time(reference)?;

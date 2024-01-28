@@ -86,11 +86,24 @@ fn render_link(link: &Link, to_html: bool) -> String {
             let target_file = prepend_slash(&target_rel)
                 .to_string_lossy()
                 .to_string();
-            match filetype {
-                FileType::Image => {return html::img_tag(&target_file)},
-                FileType::Video => {return html::video_tag(&target_file);},
+
+            let mut tag = match filetype {
+                FileType::Image => {
+                    html::HtmlTag::img(&target_file)
+                },
+                FileType::Video => {
+                    html::HtmlTag::video(&target_file)
+                }
                 _ => { return render_link_aux(&link_target_str, &link_text, to_html, None); }
+            };
+            
+            if let Some(dims) = link.parse_dims() {
+                tag.with_attr("width", dims.width);
+                if let Some(h) = dims.height {
+                    tag.with_attr("height", h);
+                }
             }
+            return tag.wrap("");
         } 
         //_ => {return md_link(&link_text, &link_target_str);}
     };
