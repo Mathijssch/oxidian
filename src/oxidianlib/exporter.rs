@@ -1,12 +1,14 @@
 use crate::oxidianlib::filesys::copy_directory;
 use crate::oxidianlib::utils::move_to;
 use log::{debug, info, warn};
+use serde_json;
 
 use super::config::ExportConfig;
 use super::constants::TAG_DIR;
 use super::filesys::{slugify_path, get_all_notes_exclude, write_to_file};
 use super::link::Link;
-use super::load_static::HTML_TEMPLATE;
+use super::load_static::{HTML_TEMPLATE, STOPWORDS};
+use super::search::SearchEntry;
 use super::tag_tree::Tree;
 use super::{note, utils, archive};
 use std::collections::{HashMap, HashSet};
@@ -301,6 +303,17 @@ impl<'a> Exporter<'a> {
         self.compile_notes_from_vec(&mut all_notes, &backlinks);
         info!("Compiled all notes in {:?}", Instant::now() - subtime);
 
+
+        // Create search index
+        // -------------------
+
+        if self.cfg.performance.build_search_index {
+            subtime = Instant::now();
+            info!("Creating search index ...");
+            self.create_search_index(&mut all_notes);
+            info!("Created search index in {:?}", Instant::now() - subtime);
+        }
+
         // Copy over all the static files 
         // ------------------------------
         subtime = Instant::now();
@@ -310,6 +323,24 @@ impl<'a> Exporter<'a> {
         // ALL DONE  ----------------------------------
         self.stats.build_time = start.elapsed();
     }
+
+    fn create_search_index(&self, notes: &[note::Note]) {
+        let stopwords: Vec<&str> = STOPWORDS.lines().collect();
+        let search_index: Vec<SearchEntry> = notes.iter()
+            .map(
+            |note| SearchEntry::new(note, stopwords.iter(), Some(self.cfg.search.max_len))
+            )
+            .collect();
+
+        // Serialize the Vec to a JSON string
+        let json_string = serde_json::to_string(&search_index)
+            .expect("Serialization of search index failed.");
+
+        // Write the JSON string to a file
+        write_to_file(&self.output_dir.join("static").join("search_index.json"),
+                        &json_string);
+    }
+
 
     fn process_tags_from_vec(&mut self, notes: &Vec<note::Note>) {
         info!("Generating tree of tags ...");

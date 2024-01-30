@@ -14,7 +14,14 @@ pub struct ExportConfig {
     pub generate_tag_index: bool,
     pub generate_archive: bool,
     pub creation_date: CreationDateConfig,
-    pub performance: PerformanceConfig
+    pub performance: PerformanceConfig,
+    pub search: SearchConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SearchConfig {
+    /// The amount of characters to store in the search index for each file.
+    pub max_len: usize, 
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -32,7 +39,9 @@ pub struct PerformanceConfig {
     ///This may come at a performance penalty, so use with caution. If all your links are fully
     ///specified, this additional searching will never be triggered, so there is no performance hit
     ///in this case.
-    pub search_for_links: bool
+    pub search_for_links: bool, 
+    ///Build a search index.
+    pub build_search_index: bool
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -53,12 +62,19 @@ impl Default for CreationDateConfig {
     } 
 }
 
+impl Default for SearchConfig { 
+    fn default() -> Self {
+        SearchConfig { max_len: 200 }
+    } 
+}
+
 impl Default for PerformanceConfig {
     fn default() -> Self {
         PerformanceConfig { 
             skip_unchanged_notes: true,
             skip_cached_attachments: true,
-            search_for_links: true
+            search_for_links: true,
+            build_search_index: true
         }
     } 
 }
@@ -73,7 +89,8 @@ impl Default for ExportConfig {
             generate_tag_index: true,
             generate_archive: true,
             creation_date: CreationDateConfig::default(),
-            performance: PerformanceConfig::default()
+            performance: PerformanceConfig::default(),
+            search: SearchConfig::default(),
         }
     }
 }

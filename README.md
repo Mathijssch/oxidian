@@ -21,6 +21,7 @@
 - [ ] [performance]: cache the backlinks.
     - [ ] Loop over the recently modified notes, and for each, loop over the keys, and just add/remove accordingly.
 - [ ] [performance]: Replace as many `String`s as possible with `Cow<Str>`s.
+- [ ] [performance]: Search the location of a file by first copying the file tree to memory. This will save many syscalls.
 - [x] Automatically refer to the tag index page, when a tag is detected.
 - [ ] Test if checklists are correctly handled.
 - [ ] Implement decent styling and frontend functionality in default template.
