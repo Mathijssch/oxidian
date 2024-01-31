@@ -1,18 +1,51 @@
- <!DOCTYPE html>
-<html> 
-    <meta charset="UTF-8">
-    <head>
-        <title>{{title}}</title>
-    </head>
-    <body>
-    <article>
-    {{content}}
-    </article>
-    
-    {{backlinks}}
+<!DOCTYPE html>
+<html lang="en">
 
-    <div> 
-        {{tag_nav}}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- TEX-style font -->
+  <link rel="stylesheet" type="text/css" href="https://cdn.rawgit.com/dreampulse/computer-modern-web-font/master/fonts.css">
+  <!-- Load some icons -->
+  <!-- <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"> -->
+  <link rel="stylesheet" type="text/css" href="static/material_icons.css">
+  <title>{title}</title>
+  <link rel="icon" href="static/mathbbM.svg" type="image/svg+xml">
+
+  {{MATH_ENGINE}}
+   
+</head>
+
+<body>
+  <div class="grid">
+    <nav id="navbar">
+      <ul>
+        <li><a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a> </li>
+        <h1><a href="/index.html">NOTES</a></h1></h1>
+        {{search_bar}}
+        <li><a href="/archive.html">Archive</a></li>
+        <li>Tags
+            {{tag_nav}}
+        </li>
+      </ul>
+      <div class="footer">
+        <p></p>
+      </div>
+    </nav>
+    <div id="navbutton">
+      <button class="openbtn" onclick="openNav()">&#9776;</button>
     </div>
-    </body>
+
+    <article id=main>
+        {{content}}
+        {{backlinks}}
+    </article>
+  </div>
+
+  <!-- <script src="_include/search.js" type="text/javascript"></script> -->
+  {{search_script}}
+  <script src="/static/navbar.js" type="text/javascript"></script>
+  <script src="https://kit.fontawesome.com/16172fc9c8.js" crossorigin="anonymous"></script>
+</body>
+
 </html>

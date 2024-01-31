@@ -16,12 +16,27 @@ pub struct ExportConfig {
     pub creation_date: CreationDateConfig,
     pub performance: PerformanceConfig,
     pub search: SearchConfig,
+    pub math: MathConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SearchConfig {
     /// The amount of characters to store in the search index for each file.
     pub max_len: usize, 
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum MathEngine {
+    Katex,
+    Mathjax
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MathConfig {
+    /// Enable math
+    pub enable_math: bool, 
+    pub engine: MathEngine,
+    pub preamble_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -54,6 +69,16 @@ impl ExportConfig {
         let path = path.as_ref();
         super::utils::read_config_from_file(path)
     }
+}
+
+impl Default for MathConfig { 
+    fn default() -> Self {
+        MathConfig { 
+            enable_math: true,
+            engine: MathEngine::Mathjax,
+            preamble_path: None
+        }
+    } 
 }
 
 impl Default for CreationDateConfig { 
@@ -91,6 +116,7 @@ impl Default for ExportConfig {
             creation_date: CreationDateConfig::default(),
             performance: PerformanceConfig::default(),
             search: SearchConfig::default(),
+            math: MathConfig::default(),
         }
     }
 }

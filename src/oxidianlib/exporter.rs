@@ -273,6 +273,9 @@ impl<'a> Exporter<'a> {
         
         // Load the template
         // -----------------
+        
+        
+
         info!("Loading template ...");
         subtime = Instant::now();
         if let Some(template_from_file) = self.load_template() { 
