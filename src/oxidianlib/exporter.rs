@@ -273,9 +273,6 @@ impl<'a> Exporter<'a> {
         
         // Load the template
         // -----------------
-        
-        
-
         info!("Loading template ...");
         subtime = Instant::now();
         if let Some(template_from_file) = self.load_template() { 
@@ -297,6 +294,15 @@ impl<'a> Exporter<'a> {
             self.generate_archive_page_from_vec(&mut all_notes);
             info!("Generated archive page in {:?}", Instant::now() - subtime)
         }
+        
+        if self.cfg.math.enable_math {
+            info!("Constructing math loading script");
+            //let math_script = self.generate_math_script();
+
+
+        }
+
+
 
         // Compile the notes
         // -----------------
@@ -465,6 +471,13 @@ impl<'a> Exporter<'a> {
             .to_html(&output_path, &self.note_template)
             .expect("Failed to export note");
     }
+
+    ///Generate some javascript to load the math rendering engine.
+    //fn generate_math_script(&self) { 
+        
+
+
+    //}
     
     ///Translate a given path from the input directory to output directory.
     ///Besides replacing the base directory, also slugify the path.

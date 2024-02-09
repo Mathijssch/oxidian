@@ -3,7 +3,6 @@ use super::utils::prepend_slash;
 use super::{constants::NOTE_EXT, errors::NotePathError};
 use log::{debug, error, info, warn};
 use slugify::slugify;
-use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -63,7 +62,6 @@ pub fn resolve_path<'a>(
         return ResolvedPath::Updated(prepend_slash(path));
     }
 
-    //info!("Full search is {}, parent is {:?}, links is {:?}", full_search, path.parent(), path);
     if full_search && just_filename(path) {
         if let Some(full_path) = find_recursive(base_dir, path, ignore) {
             return ResolvedPath::Updated(prepend_slash(&full_path));
@@ -170,9 +168,6 @@ pub fn walk_ignoring<'a>(dir: &Path, ignoring: &'a Vec<PathBuf>) -> impl Iterato
         .into_iter()
         .filter_entry(|entry| {
             let result = !ignoring.iter().any(|ignore_dir| entry.path() == ignore_dir);
-            //if !result {
-            //    info!("Ignoring {:?}", entry);
-            //}
             return result;
         })
         .filter_map(Result::ok)

@@ -22,6 +22,18 @@ pub enum GetAgeError<T: fmt::Debug> {
 }
 
 #[derive(Error, Debug)]
+//pub struct SyntaxError<T: fmt::Debug, U: fmt::Debug>(pub T, pub U);
+pub enum SyntaxError<T: fmt::Debug, U: fmt::Debug> {
+    #[error("Expected `{0:?}`, but got `{1:?}`.")]
+    UnexpectedToken(T, U),
+    #[error("Cannot `{0:?}` to a TexCommand")]
+    InvalidCommand(T),
+    #[error("The file ended before finishing command parsing")]
+    PrematureEnd,
+}
+
+
+#[derive(Error, Debug)]
 pub enum InitializationError<T: fmt::Debug> {
     #[error(transparent)]
     OutputDirExists(#[from] DirExistsError<T>),
