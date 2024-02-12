@@ -1,7 +1,5 @@
 use std::fmt::Debug;
 
-use clap::CommandFactory;
-
 use super::errors::SyntaxError;
 
 #[derive(Debug)]
@@ -34,18 +32,17 @@ enum Token {
 impl Into<String> for Token {
     fn into(self) -> String {
         match self {
-            Token::Text(literal) => &literal,
-            Token::Newcommand => "newcommand",
-            Token::DeclareMathOperator(false) => "DeclareMathOperator",
-            Token::DeclareMathOperator(true) => "DeclareMathOperator*",
-            Token::Renewcommand => "renewcommand",
-            Token::CommandName(name) => &name,
-            Token::OpenCurly => "{",
-            Token::CloseCurly => "}",
-            Token::OpenBracket => "[",
-            Token::CloseBracket => "]",
+            Token::Text(literal) => literal,
+            Token::Newcommand => "newcommand".to_string(),
+            Token::DeclareMathOperator(false) => "DeclareMathOperator".to_string(),
+            Token::DeclareMathOperator(true) => "DeclareMathOperator*".to_string(),
+            Token::Renewcommand => "renewcommand".to_string(),
+            Token::CommandName(name) => name,
+            Token::OpenCurly => "{".to_string(),
+            Token::CloseCurly => "}".to_string(),
+            Token::OpenBracket => "[".to_string(),
+            Token::CloseBracket => "]".to_string(),
         }
-        .to_string()
     }
 }
 
@@ -163,6 +160,8 @@ struct TexCommand {
     cmd: String,
     definition: String,
     declarator: Declarator,
+    argc: Option<u8>,
+    default_args: Option<String>
 }
 
 enum Declarator {
@@ -192,11 +191,18 @@ impl TryFrom<Token> for Declarator {
     }
 }
 
+
 enum CommandParseState {
     Start,
     OpenName,
     Name(String),
     CloseName,
+    OpenArgCount,
+    ArgCount(u8),
+    CloseArgCount,
+    OpenDefaultArgs, 
+    DefaultArgs(String),
+    CloseDefaultArgs,
     OpenImpl,
     Impl(String),
     Done,
@@ -239,8 +245,76 @@ impl CommandParseState {
     fn from_closename(&self, token: &Token) -> Result<Self, SyntaxErr> {
         match token {
             Token::OpenCurly => Ok(Self::OpenImpl),
+            Token::OpenBracket => Ok(Self::OpenArgCount),
             _ => Err(SyntaxError::UnexpectedToken(
                 Token::OpenCurly,
+                token.clone(),
+            )),
+        }
+    }
+    fn from_argcount(&self, token: &Token) -> Result<Self, SyntaxErr> {
+        match token {
+            Token::CloseBracket => Ok(Self::CloseArgCount),
+            _ => Err(SyntaxError::UnexpectedToken(
+                Token::CloseBracket,
+                token.clone(),
+            )),
+        }
+    }
+    fn from_closeargcount(&self, token: &Token) -> Result<Self, SyntaxErr> {
+        match token {
+            Token::OpenCurly => Ok(Self::OpenImpl),
+            Token::OpenBracket => Ok(Self::OpenDefaultArgs),
+            _ => Err(SyntaxError::UnexpectedToken(
+                Token::OpenCurly,
+                token.clone(),
+            )),
+        }
+    }
+    fn from_openargcount(&self, token: &Token) -> Result<Self, SyntaxErr> {
+        match token {
+            Token::Text(number) => Ok(
+                Self::ArgCount(
+                    number.parse::<u8>()
+                    .map_err(|e| SyntaxErr::InvalidNumber(token.clone()))?
+                )
+            ),
+            Token::OpenBracket => Ok(Self::OpenArgCount),
+            _ => Err(SyntaxError::UnexpectedToken(
+                Token::Text("<Argument count>".to_string()),
+                token.clone(),
+            )),
+        }
+    }
+    fn from_defaultargs(&self, token: &Token) -> Result<Self, SyntaxErr> {
+        match token {
+            Token::CloseBracket => Ok(Self::CloseArgCount),
+            _ => Err(SyntaxError::UnexpectedToken(
+                Token::CloseBracket,
+                token.clone(),
+            )),
+        }
+    }
+    fn from_closedefaultargs(&self, token: &Token) -> Result<Self, SyntaxErr> {
+        match token {
+            Token::OpenCurly => Ok(Self::OpenImpl),
+            _ => Err(SyntaxError::UnexpectedToken(
+                Token::OpenCurly,
+                token.clone(),
+            )),
+        }
+    }
+    fn from_opendefaultargs(&self, token: &Token) -> Result<Self, SyntaxErr> {
+        match token {
+            Token::Text(defaults) => Ok(
+                Self::DefaultArgs(defaults.to_string())
+            ),
+            Token::CloseBracket => Ok(
+                Self::CloseDefaultArgs
+            ),
+            Token::OpenBracket => Ok(Self::OpenArgCount),
+            _ => Err(SyntaxError::UnexpectedToken(
+                Token::Text("<Default args>".to_string()),
                 token.clone(),
             )),
         }
@@ -272,6 +346,12 @@ impl Transition for CommandParseState {
             Self::OpenName => self.from_openname(token)?,
             Self::Name(_) => self.from_name(token)?,
             Self::CloseName => self.from_closename(token)?,
+            Self::OpenArgCount => self.from_openargcount(token)?,
+            Self::ArgCount(_) => self.from_argcount(token)?,
+            Self::CloseArgCount => self.from_closeargcount(token)?,
+            Self::OpenDefaultArgs => self.from_opendefaultargs(token)?,
+            Self::DefaultArgs(_) => self.from_defaultargs(token)?,
+            Self::CloseDefaultArgs => self.from_closedefaultargs(token)?,
             Self::OpenImpl => self.from_openimpl(token)?,
             Self::Impl(_) => self.from_impl(token)?,
             Self::Done => {Self::Done},
@@ -293,6 +373,15 @@ impl<'a, T: Iterator<Item = Token>> PreambleParser<'a, T> {
         let declarator = Declarator::try_from(token)?;
         while let Some(subtoken) = self.lexer.next() {
             match &parser_state {
+                CommandParseState::OpenArgCount | 
+                    CommandParseState::ArgCount(_) | 
+                    CommandParseState::CloseArgCount | 
+                    CommandParseState::OpenDefaultArgs | 
+                    CommandParseState::DefaultArgs(_) |
+                    CommandParseState::CloseDefaultArgs
+                    => { 
+                    return Err(SyntaxErr::NoArguments);
+                }
                 CommandParseState::Name(name) => {
                     command_name = name.to_string();
                 }
@@ -304,6 +393,8 @@ impl<'a, T: Iterator<Item = Token>> PreambleParser<'a, T> {
                         cmd: command_name,
                         definition: command_impl,
                         declarator,
+                        argc: None,
+                        default_args: None
                     })
                 }
                 _ => {}
@@ -313,8 +404,40 @@ impl<'a, T: Iterator<Item = Token>> PreambleParser<'a, T> {
         Err(SyntaxError::PrematureEnd)
     }
 
-    fn parse_renewcommand(&self, token: &Token) -> ParseResult {
-        todo!();  // Similar to parse_mathoperator
+    fn parse_renewcommand(&mut self, token: &Token) -> ParseResult {
+        let mut parser_state = CommandParseState::Start;
+        let mut command_name = "".to_string();
+        let mut argc: Option<u8> = None;
+        let mut default_args: Option<String> = None;
+        let mut command_impl = "".to_string();
+        let declarator = Declarator::try_from(token)?;
+        while let Some(subtoken) = self.lexer.next() {
+            match &parser_state {
+                CommandParseState::Name(name) => {
+                    command_name = name.to_string();
+                }
+                CommandParseState::Impl(implement) => {
+                    command_impl = implement.to_string();
+                }
+                CommandParseState::ArgCount(nb) => {
+                    argc = Some(*nb)
+                }
+                CommandParseState::DefaultArgs(defaults) => {
+                    default_args = Some(defaults.to_string());
+                }
+                CommandParseState::Done => {
+                    return Ok(TexCommand {
+                        cmd: command_name,
+                        definition: command_impl,
+                        declarator, argc,
+                        default_args
+                    })
+                }
+                _ => {}
+            };
+            parser_state.next_state(&subtoken)?;
+        }
+        Err(SyntaxError::PrematureEnd)
     }
 }
 
