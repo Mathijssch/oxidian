@@ -16,6 +16,7 @@
 - [x] Generate tag overview pages 
 - [x] Populate navbar
 - [~] Unify the way the filenames for tags are generated. See [filenames for tags](#tags).
+- [ ] Use Handlebars for templating
 - [x] Generate timeline page
 - [x] Build search index: see `search.rs`. 
 - [ ] [performance]: cache the backlinks.

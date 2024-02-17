@@ -1,4 +1,4 @@
-use super::errors::GetAgeError;
+use super::errors::{GetAgeError, FileWriteError};
 use super::utils::prepend_slash;
 use super::{constants::NOTE_EXT, errors::NotePathError};
 use log::{debug, error, info, warn};
@@ -252,15 +252,16 @@ pub fn get_modification_time(path: &Path) -> Result<SystemTime, std::io::Error> 
 }
 
 ///Write the given string to a file at the given path.
-pub fn write_to_file(path: &Path, content: &str) {
+pub fn write_to_file(path: &Path, content: &str) -> Result<(), FileWriteError> {
     if let Some(parent_dir) = path.parent() {
-        create_dir_if_not_exists(parent_dir).expect("Failed to create parent dir for search index.");
+        create_dir_if_not_exists(parent_dir)?;
+            //.expect("Failed to create parent dir for search index.");
     }
     let file = File::create(&path).expect("Could not create file!");
     let mut writer = std::io::BufWriter::new(file);
-    writer
-        .write_all(content.as_bytes())
-        .expect("Could not write content to file");
+    writer.write_all(content.as_bytes())?;
+        //.expect("Could not write content to file");
+    Ok(())
 }
 
 ///Recursively copy directory `src` to `dest`.

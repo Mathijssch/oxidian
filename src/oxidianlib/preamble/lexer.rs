@@ -32,10 +32,10 @@ impl Into<String> for &Token {
     fn into(self) -> String {
         match self {
             Token::Text(literal) => literal.to_string(),
-            Token::Newcommand => "newcommand".to_string(),
-            Token::DeclareMathOperator(false) => "DeclareMathOperator".to_string(),
-            Token::DeclareMathOperator(true) => "DeclareMathOperator*".to_string(),
-            Token::Renewcommand => "renewcommand".to_string(),
+            Token::Newcommand => "\\\\newcommand".to_string(),
+            Token::DeclareMathOperator(false) => "\\\\DeclareMathOperator".to_string(),
+            Token::DeclareMathOperator(true) => "\\\\DeclareMathOperator*".to_string(),
+            Token::Renewcommand => "\\\\renewcommand".to_string(),
             Token::CommandName(name) => name.to_string(),
             Token::OpenCurly => "{".to_string(),
             Token::CloseCurly => "}".to_string(),

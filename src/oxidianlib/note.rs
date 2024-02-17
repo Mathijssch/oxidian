@@ -11,7 +11,7 @@ use super::link::{Link, LinkType};
 use super::placeholder::Sanitization;
 use super::obs_headers::HeaderParser;
 use super::obs_highlights::replace_obs_highlights;
-use super::utils::{markdown_to_html, read_note_from_file, self};
+use super::utils::{markdown_to_html, read_file_to_str, self};
 use super::{filesys, html, obs_tags, obs_labels};
 use super::{formatting, obs_admonitions, obs_comments, obs_links, obs_placeholders};
 use yaml_rust::Yaml;
@@ -103,7 +103,7 @@ impl<'a> Note<'a> {
     // Get a raw version of the notes, not meant for postprocessing, just for extraction of
     // information.
     pub fn new_raw(path: PathBuf, ref_path: &Path, find_files: bool, ignore: &Vec<PathBuf>) -> Result<Self, std::io::Error> {
-        let mut content = Self::sanitize(&read_note_from_file(&path)?);
+        let mut content = Self::sanitize(&read_file_to_str(&path)?);
 
         let frontmatter = match extract_yaml_frontmatter(&content) {
             Some(fm_content) => {
@@ -134,7 +134,7 @@ impl<'a> Note<'a> {
     }
 
     pub fn new(path: PathBuf, base_dir: &Path, search_links: bool, ignore: &Vec<PathBuf>) -> Result<Self, std::io::Error> {
-        let mut content = Self::sanitize(&read_note_from_file(&path)?);
+        let mut content = Self::sanitize(&read_file_to_str(&path)?);
 
         let frontmatter = match extract_yaml_frontmatter(&content) {
             Some(fm_content) => {

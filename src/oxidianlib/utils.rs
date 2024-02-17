@@ -24,7 +24,7 @@ use figment::{
 use log::info;
 
 /// Return the contents of a file at path `path` as a String.
-pub fn read_note_from_file<T: AsRef<Path>>(path: T) -> Result<String, std::io::Error> {
+pub fn read_file_to_str<T: AsRef<Path>>(path: T) -> Result<String, std::io::Error> {
     let mut file = File::open(path)?;
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;

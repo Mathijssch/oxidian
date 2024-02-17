@@ -2,6 +2,7 @@
 use std::path::{PathBuf, Path};
 use serde_derive::{Serialize, Deserialize};
 use figment::Error;
+use super::preamble::formatter as fmt;
 
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -30,6 +31,22 @@ pub enum MathEngine {
     Katex,
     Mathjax
 }
+
+impl fmt::FormatPreamble for MathEngine {
+    fn fmt_newcommand(
+            &self,
+            name: &str, 
+            expansion: &str, 
+            n_args: Option<u8>,
+            optional_args: &Option<String>
+        ) -> String {
+        match self {
+            MathEngine::Mathjax => fmt::MathjaxFormatter::fmt_newcommand(name, expansion, n_args, optional_args),
+            MathEngine::Katex => fmt::KatexFormatter::fmt_newcommand(name, expansion, n_args, optional_args)
+        }
+    }
+}
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MathConfig {

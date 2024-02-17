@@ -1,19 +1,22 @@
 use crate::oxidianlib::filesys::copy_directory;
+use crate::oxidianlib::load_static::{LOAD_MATHJAX, LOAD_KATEX};
 use crate::oxidianlib::utils::move_to;
 use log::{debug, info, warn};
 use serde_json;
 
-use super::config::ExportConfig;
+use super::config::{ExportConfig, MathEngine};
 use super::constants::TAG_DIR;
 use super::filesys::{slugify_path, get_all_notes_exclude, write_to_file};
 use super::link::Link;
-use super::load_static::{HTML_TEMPLATE, STOPWORDS};
+use super::load_static::{HTML_TEMPLATE, STOPWORDS, MATHJAX_CFG, KATEX_CFG};
 use super::search::SearchEntry;
 use super::tag_tree::Tree;
-use super::{note, utils, archive};
+use super::{note, utils, archive, errors};
+use super::preamble::formatter::FormatPreamble;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+
 
 type Backlinks = HashMap<PathBuf, HashSet<Link>>;
 
@@ -29,8 +32,7 @@ pub struct ExportStats {
 
 impl ExportStats {
     pub fn new() -> Self {
-        ExportStats {
-            note_count: 0,
+        ExportStats { note_count: 0,
             skipped_notes: 0,
             skipped_attachments: 0,
             attachment_count: 0,
@@ -180,8 +182,19 @@ impl<'a> Exporter<'a> {
         }
     }
 
+    fn set_math_loading_snip(&mut self) {
+        info!("Adding snippet to load math engine.");
+        let mut replacement = "";
+        if self.cfg.math.enable_math {
+            replacement = match self.cfg.math.engine {
+                MathEngine::Mathjax => { LOAD_MATHJAX },
+                MathEngine::Katex => { LOAD_KATEX }
+            }
+        }
+        self.note_template = self.note_template.replace("{{MATH_ENGINE}}", replacement);
+    }
+
     fn set_tag_nav(&mut self, tree_html: &str) {
-        info!("Trying to replace `{{tag_nav}}` in the template by a tree of tags.");
         self.note_template = self.note_template.replace("{{tag_nav}}", tree_html);
     }
 
@@ -215,20 +228,20 @@ impl<'a> Exporter<'a> {
     fn load_template(&self) -> Option<String> {
         if let Some(dir) = &self.cfg.template_dir {
             let template_path = dir.join("index.html");
-            return utils::read_note_from_file(template_path).ok();
+            return utils::read_file_to_str(template_path).ok();
         }
         None
     }
 
-    fn generate_archive_page_from_vec<'b>(&self, notes: &mut Vec<note::Note<'b>>) {
+    fn generate_archive_page_from_vec(&self, notes: &mut Vec<note::Note<'_>>) {
         for note in &mut *notes {
             note.cache_creation_time(self.cfg.creation_date.use_git);
         }
 
         let archive_html = archive::generate_archive_page_html(
             notes, 
-            &self.input_dir,
-            &Path::new(TAG_DIR), 
+            self.input_dir,
+            Path::new(TAG_DIR), 
             &self.note_template
         ); 
         write_to_file(&self.get_archive_dir(), &archive_html);
@@ -249,10 +262,10 @@ impl<'a> Exporter<'a> {
         // ----------------
         info!("Listing all the notes in {:?}", self.input_dir);
         let mut subtime = Instant::now();
-        let ignored = Self::get_excluded(&self.input_dir, &self.cfg);
+        let ignored = Self::get_excluded(self.input_dir, self.cfg);
         debug!("Ignoring the following directories:\n{:?}", ignored);
         //let mut iter_notes: Vec<note::Note> = iter_notes(&self.input_dir, &ignored).collect();
-        let mut all_notes = get_all_notes(&self.input_dir, &ignored, self.cfg.performance.search_for_links);
+        let mut all_notes = get_all_notes(self.input_dir, &ignored, self.cfg.performance.search_for_links);
         info!("Loaded all notes in {:?}", Instant::now() - subtime);
 
         // Generate backlinks
@@ -280,6 +293,17 @@ impl<'a> Exporter<'a> {
         };
         info!("Loaded template in {:?}", Instant::now() - subtime);
 
+        // Add math support
+        
+        if self.cfg.math.enable_math {
+            subtime = Instant::now();
+            info!("Constructing math configuration script");
+            self.generate_math_config_script()
+                .expect("Failed to create the math configuration script.");
+            info!("Converted preamble in {:?}", Instant::now() - subtime);
+        }
+        self.set_math_loading_snip();
+
         // Generate a tree of tags used in the notes
         // -----------------------------------------
         if self.cfg.generate_nav || self.cfg.generate_tag_index {
@@ -295,13 +319,6 @@ impl<'a> Exporter<'a> {
             info!("Generated archive page in {:?}", Instant::now() - subtime)
         }
         
-        if self.cfg.math.enable_math {
-            info!("Constructing math loading script");
-            //let math_script = self.generate_math_script();
-
-
-        }
-
 
 
         // Compile the notes
@@ -383,6 +400,13 @@ impl<'a> Exporter<'a> {
             &Path::new(TAG_DIR),
             &self.note_template
         ).expect("Failed to generate tag index pages");
+    }
+
+    fn output_static_path(&self) -> PathBuf {
+        if let Some(static_in) = &self.cfg.static_dir { 
+            return self.output_dir.join(static_in);
+        }
+        return self.output_dir.join("static");
     }
 
     fn copy_static_files(&self) {
@@ -473,11 +497,24 @@ impl<'a> Exporter<'a> {
     }
 
     ///Generate some javascript to load the math rendering engine.
-    //fn generate_math_script(&self) { 
-        
-
-
-    //}
+    fn generate_math_config_script(&self) -> Result<(), errors::PreambleError> { 
+        let mut preamble_html = "".to_string();
+        if let Some(preamble_path) = &self.cfg.math.preamble_path {
+            info!("Converting preamble {}", preamble_path.to_string_lossy());
+            let preamble = utils::read_file_to_str(self.input_dir.join(preamble_path))?;
+            preamble_html = self.cfg.math.engine.preamble_to_html(&preamble); 
+        } else {
+            info!("No preamble path was provided.")
+        }
+        let preamble_html = match self.cfg.math.engine {
+                MathEngine::Katex => KATEX_CFG,
+                MathEngine::Mathjax => MATHJAX_CFG
+        }.replace("{{PRMBL}}", &preamble_html);
+        write_to_file(
+            &self.output_static_path().join("js").join("math_cfg.js"), 
+            &preamble_html)?;
+        Ok(())
+    }
     
     ///Translate a given path from the input directory to output directory.
     ///Besides replacing the base directory, also slugify the path.

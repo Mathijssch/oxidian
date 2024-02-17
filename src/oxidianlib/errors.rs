@@ -32,11 +32,26 @@ pub enum InitializationError<T: fmt::Debug> {
 }
 
 #[derive(Error, Debug)]
+pub enum FileWriteError {
+    #[error(transparent)]
+    IOError(#[from] std::io::Error),
+}
+
+
+#[derive(Error, Debug)]
 pub enum IndexError {
     #[error("Could not open the index file.")]
     IndexOpenError,
     #[error("Could not read index file.")]
     IndexReadError
+}
+
+#[derive(Error, Debug)]
+pub enum PreambleError {
+    #[error(transparent)]
+    PreambleReadError(#[from] std::io::Error),
+    #[error(transparent)]
+    FileWriteError(#[from] FileWriteError),
 }
 
 #[derive(Error, Debug)]
