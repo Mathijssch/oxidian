@@ -23,11 +23,12 @@
     - [ ] Loop over the recently modified notes, and for each, loop over the keys, and just add/remove accordingly.
 - [ ] [performance]: Replace as many `String`s as possible with `Cow<Str>`s.
 - [ ] [performance]: Search the location of a file by first copying the file tree to memory. This will save many syscalls.
+- [ ] [performance]: Use [AhoCorasick](https://docs.rs/aho-corasick/latest/aho_corasick/struct.AhoCorasick.html) crate for multiple replacements in a string. 
 - [x] Automatically refer to the tag index page, when a tag is detected.
 - [ ] Test if checklists are correctly handled.
 - [ ] Implement decent styling and frontend functionality in default template.
-    - [ ] Mathjax / KaTeX support 
-        - [ ] Convert .sty preamble to mathjax config
+    - [x] Mathjax / KaTeX support 
+        - [x] Convert .sty preamble to mathjax config
     - [ ] Navbar styling
     - [ ] Avoid FOUC
 

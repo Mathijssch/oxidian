@@ -24,6 +24,8 @@ pub struct ExportConfig {
 pub struct SearchConfig {
     /// The amount of characters to store in the search index for each file.
     pub max_len: usize, 
+    /// Enable search
+    pub enable: bool
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -44,6 +46,13 @@ impl fmt::FormatPreamble for MathEngine {
             MathEngine::Mathjax => fmt::MathjaxFormatter::fmt_newcommand(name, expansion, n_args, optional_args),
             MathEngine::Katex => fmt::KatexFormatter::fmt_newcommand(name, expansion, n_args, optional_args)
         }
+    } 
+
+    fn fmt_declaremathoperator(&self, name: &str, operator: &str, star: bool) -> String {
+        match self {
+            MathEngine::Mathjax => fmt::MathjaxFormatter::fmt_declaremathoperator(name, operator, star),
+            MathEngine::Katex => fmt::KatexFormatter::fmt_declaremathoperator(name, operator, star)
+        }
     }
 }
 
@@ -51,7 +60,7 @@ impl fmt::FormatPreamble for MathEngine {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MathConfig {
     /// Enable math
-    pub enable_math: bool, 
+    pub enable: bool, 
     pub engine: MathEngine,
     pub preamble_path: Option<PathBuf>,
 }
@@ -91,7 +100,7 @@ impl ExportConfig {
 impl Default for MathConfig { 
     fn default() -> Self {
         MathConfig { 
-            enable_math: true,
+            enable: true,
             engine: MathEngine::Mathjax,
             preamble_path: None
         }
@@ -106,7 +115,7 @@ impl Default for CreationDateConfig {
 
 impl Default for SearchConfig { 
     fn default() -> Self {
-        SearchConfig { max_len: 200 }
+        SearchConfig { max_len: 200, enable: true }
     } 
 }
 

@@ -1,25 +1,25 @@
 use crate::oxidianlib::filesys::copy_directory;
-use crate::oxidianlib::load_static::{LOAD_MATHJAX, LOAD_KATEX};
+use crate::oxidianlib::load_static::{LOAD_KATEX, LOAD_MATHJAX, LOAD_SEARCH, SEARCH_HTML};
 use crate::oxidianlib::utils::move_to;
 use log::{debug, info, warn};
 use serde_json;
 
 use super::config::{ExportConfig, MathEngine};
 use super::constants::TAG_DIR;
-use super::filesys::{slugify_path, get_all_notes_exclude, write_to_file};
+use super::filesys::{get_all_notes_exclude, slugify_path, write_to_file};
 use super::link::Link;
-use super::load_static::{HTML_TEMPLATE, STOPWORDS, MATHJAX_CFG, KATEX_CFG};
+use super::load_static::{
+    HTML_TEMPLATE, KATEX_CFG, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_SCRIPT, STOPWORDS,
+};
+use super::preamble::formatter::FormatPreamble;
 use super::search::SearchEntry;
 use super::tag_tree::Tree;
-use super::{note, utils, archive, errors};
-use super::preamble::formatter::FormatPreamble;
+use super::{archive, errors, note, utils};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-
 type Backlinks = HashMap<PathBuf, HashSet<Link>>;
-
 
 #[derive(Debug)]
 pub struct ExportStats {
@@ -32,7 +32,8 @@ pub struct ExportStats {
 
 impl ExportStats {
     pub fn new() -> Self {
-        ExportStats { note_count: 0,
+        ExportStats {
+            note_count: 0,
             skipped_notes: 0,
             skipped_attachments: 0,
             attachment_count: 0,
@@ -52,11 +53,11 @@ Total nb of notes: {count} ({note_skip} skipped)
 Total attachment files: {attach_nb} ({attach_skip} skipped)
 Total Build Time: {time:?}
 ",
-            count=self.note_count, 
-            attach_nb=self.attachment_count,
-            time=self.build_time, 
-            note_skip=self.skipped_notes,
-            attach_skip=self.skipped_attachments
+            count = self.note_count,
+            attach_nb = self.attachment_count,
+            time = self.build_time,
+            note_skip = self.skipped_notes,
+            attach_skip = self.skipped_attachments
         )
     }
 }
@@ -72,13 +73,13 @@ pub struct Exporter<'a> {
 fn get_all_notes<'b>(
     input_dir: &Path,
     ignore: &Vec<PathBuf>,
-    search_for_linked_files: bool
-) -> Vec<note::Note<'b>> { 
+    search_for_linked_files: bool,
+) -> Vec<note::Note<'b>> {
     let all_paths = get_all_notes_exclude(&input_dir, ignore);
     let all_notes = all_paths.filter_map(|note_path| {
-        note_path.map_or(None, |path| Some(note::Note::new(
-                    path, &input_dir, 
-                    search_for_linked_files, ignore).unwrap()))
+        note_path.map_or(None, |path| {
+            Some(note::Note::new(path, &input_dir, search_for_linked_files, ignore).unwrap())
+        })
     });
     return all_notes.collect();
 }
@@ -182,13 +183,33 @@ impl<'a> Exporter<'a> {
         }
     }
 
+    fn set_search_loading_snip(&mut self) {
+        info!("Adding snippet to load the search engine.");
+        let replacement = if self.cfg.search.enable {
+            LOAD_SEARCH
+        } else {
+            ""
+        };
+        self.note_template = self.note_template.replace("{{SEARCH_SCRIPT}}", replacement);
+    }
+
+    fn set_search_component(&mut self) {
+        info!("Adding snippet to add a search bar.");
+        let replacement = if self.cfg.search.enable {
+            SEARCH_HTML
+        } else {
+            ""
+        };
+        self.note_template = self.note_template.replace("{{SEARCH_BAR}}", replacement);
+    }
+
     fn set_math_loading_snip(&mut self) {
         info!("Adding snippet to load math engine.");
         let mut replacement = "";
-        if self.cfg.math.enable_math {
+        if self.cfg.math.enable {
             replacement = match self.cfg.math.engine {
-                MathEngine::Mathjax => { LOAD_MATHJAX },
-                MathEngine::Katex => { LOAD_KATEX }
+                MathEngine::Mathjax => LOAD_MATHJAX,
+                MathEngine::Katex => LOAD_KATEX,
             }
         }
         self.note_template = self.note_template.replace("{{MATH_ENGINE}}", replacement);
@@ -239,15 +260,18 @@ impl<'a> Exporter<'a> {
         }
 
         let archive_html = archive::generate_archive_page_html(
-            notes, 
+            notes,
             self.input_dir,
-            Path::new(TAG_DIR), 
-            &self.note_template
-        ); 
-        write_to_file(&self.get_archive_dir(), &archive_html);
+            Path::new(TAG_DIR),
+            &self.note_template,
+        );
+        write_to_file(&self.get_archive_dir(), &archive_html)
+            .expect("Couldn't write archive page.");
     }
 
-    fn get_archive_dir(&self) -> PathBuf { self.output_dir.join("archive.html") }
+    fn get_archive_dir(&self) -> PathBuf {
+        self.output_dir.join("archive.html")
+    }
 
     pub fn export(&mut self) {
         let start = Instant::now();
@@ -265,7 +289,11 @@ impl<'a> Exporter<'a> {
         let ignored = Self::get_excluded(self.input_dir, self.cfg);
         debug!("Ignoring the following directories:\n{:?}", ignored);
         //let mut iter_notes: Vec<note::Note> = iter_notes(&self.input_dir, &ignored).collect();
-        let mut all_notes = get_all_notes(self.input_dir, &ignored, self.cfg.performance.search_for_links);
+        let mut all_notes = get_all_notes(
+            self.input_dir,
+            &ignored,
+            self.cfg.performance.search_for_links,
+        );
         info!("Loaded all notes in {:?}", Instant::now() - subtime);
 
         // Generate backlinks
@@ -283,19 +311,19 @@ impl<'a> Exporter<'a> {
         // checking.
         //
         //self.compile_notes(&backlinks);
-        
+
         // Load the template
         // -----------------
         info!("Loading template ...");
         subtime = Instant::now();
-        if let Some(template_from_file) = self.load_template() { 
+        if let Some(template_from_file) = self.load_template() {
             self.note_template = template_from_file;
         };
         info!("Loaded template in {:?}", Instant::now() - subtime);
 
         // Add math support
-        
-        if self.cfg.math.enable_math {
+
+        if self.cfg.math.enable {
             subtime = Instant::now();
             info!("Constructing math configuration script");
             self.generate_math_config_script()
@@ -303,6 +331,18 @@ impl<'a> Exporter<'a> {
             info!("Converted preamble in {:?}", Instant::now() - subtime);
         }
         self.set_math_loading_snip();
+
+        if self.cfg.search.enable {
+            subtime = Instant::now();
+            info!("Adding search script");
+            self.save_search_script();
+            info!("Converted preamble in {:?}", Instant::now() - subtime);
+        }
+        info!("saving navbar script");
+        self.save_navbar_script();
+
+        self.set_search_loading_snip();
+        self.set_search_component();
 
         // Generate a tree of tags used in the notes
         // -----------------------------------------
@@ -318,8 +358,6 @@ impl<'a> Exporter<'a> {
             self.generate_archive_page_from_vec(&mut all_notes);
             info!("Generated archive page in {:?}", Instant::now() - subtime)
         }
-        
-
 
         // Compile the notes
         // -----------------
@@ -328,7 +366,6 @@ impl<'a> Exporter<'a> {
         info!("Compiling the notes ...");
         self.compile_notes_from_vec(&mut all_notes, &backlinks);
         info!("Compiled all notes in {:?}", Instant::now() - subtime);
-
 
         // Create search index
         // -------------------
@@ -340,7 +377,7 @@ impl<'a> Exporter<'a> {
             info!("Created search index in {:?}", Instant::now() - subtime);
         }
 
-        // Copy over all the static files 
+        // Copy over all the static files
         // ------------------------------
         subtime = Instant::now();
         self.copy_static_files();
@@ -352,21 +389,23 @@ impl<'a> Exporter<'a> {
 
     fn create_search_index(&self, notes: &[note::Note]) {
         let stopwords: Vec<&str> = STOPWORDS.lines().collect();
-        let search_index: Vec<SearchEntry> = notes.iter()
-            .map(
-            |note| SearchEntry::new(note, stopwords.iter(), Some(self.cfg.search.max_len))
-            )
+        let search_index: Vec<SearchEntry> = notes
+            .iter()
+            .map(|note| SearchEntry::new(note, stopwords.iter(), Some(self.cfg.search.max_len), self.input_dir))
             .collect();
 
         // Serialize the Vec to a JSON string
-        let json_string = serde_json::to_string(&search_index)
-            .expect("Serialization of search index failed.");
+        let json_string =
+            serde_json::to_string(&search_index).expect("Serialization of search index failed.");
 
         // Write the JSON string to a file
-        write_to_file(&self.output_dir.join("static").join("search_index.json"),
-                        &json_string);
+        let size = write_to_file(
+            &self.output_dir.join("static").join("js").join("search_index.json"),
+            &json_string,
+        )
+        .expect("Could not write search index to file.");
+        info!("Saved search index of {:2.2}kb", (size as f64)/1024.);
     }
-
 
     fn process_tags_from_vec(&mut self, notes: &Vec<note::Note>) {
         info!("Generating tree of tags ...");
@@ -374,7 +413,7 @@ impl<'a> Exporter<'a> {
         let tags = self.generate_tag_tree_from_notes(&notes);
         info!("Constructed tree of tags in {:?}", Instant::now() - subtime);
 
-        if self.cfg.generate_nav { 
+        if self.cfg.generate_nav {
             subtime = Instant::now();
             let tag_tree_html = tags.to_html();
             info!(
@@ -386,27 +425,30 @@ impl<'a> Exporter<'a> {
         if self.cfg.generate_tag_index {
             subtime = Instant::now();
             self.generate_tag_indices(&tags);
-            info!(
-                "Generated tag indices in {:?}",
-                Instant::now() - subtime
-            );
+            info!("Generated tag indices in {:?}", Instant::now() - subtime);
         }
-
     }
 
     fn generate_tag_indices(&self, tags: &Tree) {
-        tags.build_index_pages(
-            &self.output_dir,
-            &Path::new(TAG_DIR),
-            &self.note_template
-        ).expect("Failed to generate tag index pages");
+        tags.build_index_pages(&self.output_dir, &Path::new(TAG_DIR), &self.note_template)
+            .expect("Failed to generate tag index pages");
     }
 
     fn output_static_path(&self) -> PathBuf {
-        if let Some(static_in) = &self.cfg.static_dir { 
+        if let Some(static_in) = &self.cfg.static_dir {
             return self.output_dir.join(static_in);
         }
         return self.output_dir.join("static");
+    }
+
+    fn save_navbar_script(&self) {
+        let output = self.output_static_path().join("js").join("navbar.js");
+        write_to_file(&output, NAVBAR_SCRIPT).expect("Couldn't write the navbar script to a file.");
+    }
+
+    fn save_search_script(&self) {
+        let output = self.output_static_path().join("js").join("search.js");
+        write_to_file(&output, SEARCH_SCRIPT).expect("Couldn't write the search script to a file.");
     }
 
     fn copy_static_files(&self) {
@@ -440,11 +482,15 @@ impl<'a> Exporter<'a> {
 
     ///Slugify the portion of the path relative to the input directory, or the whole thing, if the
     ///input directory is not part of the `path`.
-    fn slugify_path<'p> (&self, path: &'p Path, extension: Option<&str>) -> Result<PathBuf, super::errors::NotePathError<&'p Path>> {
-        let (internal_path, has_prefix) = super::filesys::relative_to_with_info(&path, &self.input_dir);
-        let slugged = slugify_path(&internal_path, extension).map_err(
-            |_| super::errors::NotePathError::NoStem(path)
-        )?;
+    fn slugify_path<'p>(
+        &self,
+        path: &'p Path,
+        extension: Option<&str>,
+    ) -> Result<PathBuf, super::errors::NotePathError<&'p Path>> {
+        let (internal_path, has_prefix) =
+            super::filesys::relative_to_with_info(&path, &self.input_dir);
+        let slugged = slugify_path(&internal_path, extension)
+            .map_err(|_| super::errors::NotePathError::NoStem(path))?;
         if has_prefix {
             return Ok(self.input_dir.join(&slugged));
         } else {
@@ -454,23 +500,25 @@ impl<'a> Exporter<'a> {
 
     fn should_skip_note(&self, source_path: &Path, dst_path: &Path) -> bool {
         // If we shouldn't skip unchanged notes, then don't skip.
-        if !self.cfg.performance.skip_unchanged_notes { return false }
+        if !self.cfg.performance.skip_unchanged_notes {
+            return false;
+        }
         // Otherwise, check if has not been changed. If that check fails, just don't skip it.
-        super::filesys::is_older(source_path, dst_path).unwrap_or(false) 
+        super::filesys::is_older(source_path, dst_path).unwrap_or(false)
     }
 
     /// Check if copying the target of the given link should be skipped.
     fn should_skip_attachment(&self, link: &Link) -> bool {
         // If we shouldn't skip cached attachments, then don't skip.
-        if !self.cfg.performance.skip_cached_attachments { return false }
+        if !self.cfg.performance.skip_cached_attachments {
+            return false;
+        }
         // Otherwise, check if has not been changed. If that check fails, just don't skip it.
         let (input_path, output_path) = self.get_paths_of_linked_attach(link);
-        super::filesys::is_older(&input_path, &output_path).unwrap_or(false) 
+        super::filesys::is_older(&input_path, &output_path).unwrap_or(false)
     }
 
-
     fn compile_note<'b>(&mut self, new_note: &mut note::Note<'b>, backlinks: &'b Backlinks) {
-
         self.stats.note_count += 1;
 
         let output_path = self.input_to_output(&new_note.path, Some("html"));
@@ -478,14 +526,16 @@ impl<'a> Exporter<'a> {
 
         for link in new_note.links.iter().filter(|l| l.is_attachment) {
             self.stats.attachment_count += 1;
-            if !self.should_skip_attachment(&link){
+            if !self.should_skip_attachment(&link) {
                 self.transfer_linked_file(&link);
-            } else { self.stats.skipped_attachments += 1; }
+            } else {
+                self.stats.skipped_attachments += 1;
+            }
         }
-        
-        if skip_note { 
+
+        if skip_note {
             self.stats.skipped_notes += 1;
-            return; 
+            return;
         }
 
         debug!("Exporting note {:?}", new_note.path);
@@ -497,29 +547,32 @@ impl<'a> Exporter<'a> {
     }
 
     ///Generate some javascript to load the math rendering engine.
-    fn generate_math_config_script(&self) -> Result<(), errors::PreambleError> { 
+    fn generate_math_config_script(&self) -> Result<(), errors::PreambleError> {
         let mut preamble_html = "".to_string();
         if let Some(preamble_path) = &self.cfg.math.preamble_path {
             info!("Converting preamble {}", preamble_path.to_string_lossy());
             let preamble = utils::read_file_to_str(self.input_dir.join(preamble_path))?;
-            preamble_html = self.cfg.math.engine.preamble_to_html(&preamble); 
+            preamble_html = self.cfg.math.engine.preamble_to_html(&preamble);
         } else {
             info!("No preamble path was provided.")
         }
         let preamble_html = match self.cfg.math.engine {
-                MathEngine::Katex => KATEX_CFG,
-                MathEngine::Mathjax => MATHJAX_CFG
-        }.replace("{{PRMBL}}", &preamble_html);
+            MathEngine::Katex => KATEX_CFG,
+            MathEngine::Mathjax => MATHJAX_CFG,
+        }
+        .replace("{{PRMBL}}", &preamble_html);
         write_to_file(
-            &self.output_static_path().join("js").join("math_cfg.js"), 
-            &preamble_html)?;
+            &self.output_static_path().join("js").join("math_cfg.js"),
+            &preamble_html,
+        )?;
         Ok(())
     }
-    
+
     ///Translate a given path from the input directory to output directory.
     ///Besides replacing the base directory, also slugify the path.
     fn input_to_output(&self, path: &Path, extension: Option<&str>) -> PathBuf {
-        let output_path = self.slugify_path(&path, extension)
+        let output_path = self
+            .slugify_path(&path, extension)
             .expect("Could not slugify path.");
         move_to(&output_path, &self.input_dir, &self.output_dir)
             .unwrap_or_else(|_| self.output_dir.join(&output_path))
@@ -527,20 +580,20 @@ impl<'a> Exporter<'a> {
 
     ///Get the source and destination files for the linked attachment.
     fn get_paths_of_linked_attach(&self, link: &Link) -> (PathBuf, PathBuf) {
-
         let output_path = self.input_to_output(&link.target, None);
 
         let input_path = match &self.cfg.attachment_dir {
             Some(attachment_dir) => self.input_dir.join(attachment_dir.join(&link.target)),
-            None => self.input_dir.join(&link.target)
+            None => self.input_dir.join(&link.target),
         };
         (input_path, output_path)
     }
 
-
     fn transfer_linked_file(&mut self, link: &Link) {
         // Only move linked attachments
-        if !link.is_attachment { return; }
+        if !link.is_attachment {
+            return;
+        }
 
         let (input_path, output_path) = self.get_paths_of_linked_attach(link);
         if let Err(err) = std::fs::copy(&input_path, &output_path) {

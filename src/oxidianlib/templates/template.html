@@ -9,7 +9,7 @@
   <!-- Load some icons -->
   <!-- <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"> -->
   <link rel="stylesheet" type="text/css" href="static/material_icons.css">
-  <title>{title}</title>
+  <title>{{title}}</title>
   <link rel="icon" href="static/mathbbM.svg" type="image/svg+xml">
 
   {{MATH_ENGINE}}
@@ -22,9 +22,9 @@
       <ul>
         <li><a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a> </li>
         <h1><a href="/index.html">NOTES</a></h1></h1>
-        {{search_bar}}
+        {{SEARCH_BAR}}
         <li><a href="/archive.html">Archive</a></li>
-        <li>Tags
+        <li>
             {{tag_nav}}
         </li>
       </ul>
@@ -43,8 +43,8 @@
   </div>
 
   <!-- <script src="_include/search.js" type="text/javascript"></script> -->
-  {{search_script}}
-  <script src="/static/navbar.js" type="text/javascript"></script>
+  {{SEARCH_SCRIPT}}
+  <script src="/static/js/navbar.js" type="text/javascript"></script>
   <script src="https://kit.fontawesome.com/16172fc9c8.js" crossorigin="anonymous"></script>
 </body>
 

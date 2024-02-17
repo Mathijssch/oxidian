@@ -1,7 +1,7 @@
 const selectElement = document.getElementById('filter_input');
 
 function build_link_of_result(res) {
-    return `<a href=${res.obj.link}>${fuzzysort.highlight(res)}</a>`
+    return `<a href=${res.obj.path}>${fuzzysort.highlight(res)}</a>`
 }
 
 function present_search_results(results) {
@@ -11,7 +11,7 @@ function present_search_results(results) {
 }
 
 async function getSearchIdx() { 
-    let url = "_include/search_index.json";
+    let url = "/static/js/search_index.json";
     let response = await fetch(url); 
     return await response.json();
 }

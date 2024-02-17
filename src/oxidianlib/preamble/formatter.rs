@@ -27,18 +27,10 @@ pub trait FormatPreamble {
                 println!("could not parse command: {}.", command.unwrap_err());
             }
         }
-        output.join(",\n")
+        output.join(",\n").replace("\\", "\\\\")
     }
 
-    fn fmt_declaremathoperator(&self, name: &str, operator: &str, star: bool) -> String {
-        let starcmd = if star { "*" } else { "" };
-        format!(
-            "\"{name}\": \"\\\\operatorname{star}{{{operator}}}\"",
-            name = name,
-            star = starcmd,
-            operator = operator
-        )
-    }
+    fn fmt_declaremathoperator(&self, name: &str, operator: &str, star: bool) -> String;
 
     fn fmt_newcommand(
         &self,
@@ -61,8 +53,8 @@ impl KatexFormatter {
     pub fn fmt_newcommand(
         name: &str,
         expansion: &str,
-        n_args: Option<u8>,
-        optional_args: &Option<String>,
+        _n_args: Option<u8>,
+        _optional_args: &Option<String>,
     ) -> String {
         format!(
             "\"{name}\": \"{expansion}\"",
@@ -70,19 +62,33 @@ impl KatexFormatter {
             expansion = expansion
         )
     }
-}
 
-impl FormatPreamble for KatexFormatter {
-    fn fmt_newcommand(
-            &self,
-            name: &str,
-            expansion: &str,
-            n_args: Option<u8>,
-            optional_args: &Option<String>,
-        ) -> String {
-        self.fmt_newcommand(name, expansion, n_args, optional_args)
+    pub fn fmt_declaremathoperator(name: &str, operator: &str, star: bool) -> String {
+        let starcmd = if star { "*" } else { "" };
+        format!(
+            "\"{name}\": \"\\operatorname{star}{{{operator}}}\"",
+            name = name,
+            star = starcmd,
+            operator = operator
+        )
     }
 }
+
+//impl FormatPreamble for KatexFormatter {
+//    fn fmt_newcommand(
+//            &self,
+//            name: &str,
+//            expansion: &str,
+//            n_args: Option<u8>,
+//            optional_args: &Option<String>,
+//        ) -> String {
+//        Self::fmt_newcommand(name, expansion, n_args, optional_args)
+//    }
+
+//    fn fmt_declaremathoperator(&self, name: &str, operator: &str, star: bool) -> String {
+//        Self::fmt_declaremathoperator(name, operator, star)
+//    }
+//}
 
 // MathJax
 pub struct MathjaxFormatter;
@@ -114,21 +120,39 @@ impl MathjaxFormatter {
             }
         }
         format!(
-            "\"{name}\": \"{expansion}\"",
-            name = name,
-            expansion = expansion
+            "\"{name}\": {expansion}",
+            name = Self::remove_leading_backslash(name),
+            expansion = expression
+        )
+    }
+
+    fn remove_leading_backslash(name: &str) -> &str {
+        name.strip_prefix("\\").unwrap_or_else(|| name)
+    }
+
+    pub fn fmt_declaremathoperator(name: &str, operator: &str, star: bool) -> String {
+        let starcmd = if star { "*" } else { "" };
+        format!(
+            "\"{name}\": \"\\operatorname{star}{{{operator}}}\"",
+            name = Self::remove_leading_backslash(name),
+            star = starcmd,
+            operator = operator
         )
     }
 }
 
-impl FormatPreamble for MathjaxFormatter {
-    fn fmt_newcommand(
-            &self,
-            name: &str,
-            expansion: &str,
-            n_args: Option<u8>,
-            optional_args: &Option<String>,
-        ) -> String {
-        self.fmt_newcommand(name, expansion, n_args, optional_args)
-    }
-}
+//impl FormatPreamble for MathjaxFormatter {
+//    fn fmt_newcommand(
+//            &self,
+//            name: &str,
+//            expansion: &str,
+//            n_args: Option<u8>,
+//            optional_args: &Option<String>,
+//        ) -> String {
+//        Self::fmt_newcommand(name, expansion, n_args, optional_args)
+//    }
+
+//    fn fmt_declaremathoperator(&self, name: &str, operator: &str, star: bool) -> String {
+//        Self::fmt_declaremathoperator(name, operator, star)
+//    }
+//}

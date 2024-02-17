@@ -13,7 +13,8 @@ MathJax = {
     },
     loader: {load: ['ui/lazy']}
 };
-MathJax.Hub.Config({
-  "fast-preview": {disabled: true},
-  tex2jax: {preview: "none"}
-});
+
+//MathJax.Hub.Config({
+//  "fast-preview": {disabled: true},
+//  tex2jax: {preview: "none"}
+//});

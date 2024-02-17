@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 use clap::builder::OsStr;
-use super::{constants::NOTE_EXT, utils};
+use super::{constants::NOTE_EXT, utils, filesys::relative_to};
 
 use regex::Regex;
 
@@ -113,8 +113,8 @@ impl Link {
 
     ///Express the target of the link relative to the given directory.
     ///If the link is not in the given directory, then the target is not changed.
-    pub fn set_relative(mut self, dir: &Path) -> Self {
-        let relative_path = &self.target.strip_prefix(dir).unwrap_or(&self.target);
+    pub fn set_relative(mut self, dir: &Path) -> Self { 
+        let relative_path = relative_to(&self.target, dir);
         self.target = prepend_slash(relative_path);
         self
     }
