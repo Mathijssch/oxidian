@@ -252,7 +252,7 @@ pub fn get_modification_time(path: &Path) -> Result<SystemTime, std::io::Error> 
 }
 
 ///Write the given string to a file at the given path.
-pub fn write_to_file(path: &Path, content: &str) -> Result<usize, FileWriteError> {
+pub fn write_bin_to_file(path: &Path, content: &[u8]) -> Result<usize, FileWriteError> {
     if let Some(parent_dir) = path.parent() {
         create_dir_if_not_exists(parent_dir)?;
             //.expect("Failed to create parent dir for search index.");
@@ -260,9 +260,23 @@ pub fn write_to_file(path: &Path, content: &str) -> Result<usize, FileWriteError
     let file = File::create(&path).expect("Could not create file!");
     let mut writer = std::io::BufWriter::new(file);
     let size = content.len();
-    writer.write_all(content.as_bytes())?;
+    writer.write_all(content)?;
         //.expect("Could not write content to file");
     Ok(size)
+}
+
+///Write the given string to a file at the given path.
+pub fn write_to_file(path: &Path, content: &str) -> Result<usize, FileWriteError> {
+    write_bin_to_file(path, content.as_bytes())
+    //if let Some(parent_dir) = path.parent() {
+    //    create_dir_if_not_exists(parent_dir)?;
+    //        //.expect("Failed to create parent dir for search index.");
+    //}
+    //let file = File::create(&path).expect("Could not create file!");
+    //let mut writer = std::io::BufWriter::new(file);
+    //let size = content.len();
+    //writer.write_all(content.as_bytes())?;
+    //    //.expect("Could not write content to file"); Ok(size)
 }
 
 ///Recursively copy directory `src` to `dest`.

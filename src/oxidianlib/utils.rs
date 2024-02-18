@@ -31,6 +31,8 @@ pub fn read_file_to_str<T: AsRef<Path>>(path: T) -> Result<String, std::io::Erro
     Ok(contents)
 }
 
+pub fn byte_to_kb(bytes: usize) -> f64 { bytes as f64 / 1024. }
+
 ///Get the first char in a string if there is one, else return space.
 ///The default is an arbitrary value which we don't expect in practice.
 pub fn initial<T: AsRef<str>>(text: T) -> char {

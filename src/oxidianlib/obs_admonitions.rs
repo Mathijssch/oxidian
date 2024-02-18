@@ -44,19 +44,10 @@ impl AdmonitionParser {
             )
             .as_ref(),
         );
+        title_html.push_str("<div class=\"admonition-content\">");
         title_html
     }
 
-    /// Add the line and then close the div.
-    //fn add_then_exit(&mut self, line: &str) -> String {
-    //    self.state = AdmonitionState::Idle;
-    //    return line.to_string() + "\n</div>";
-    //}
-
-    //fn exit_then_add(&mut self, line: &str) -> String {
-    //    self.state = AdmonitionState::Idle;
-    //    return "</div>\n".to_string() + line;
-    //}
 
     pub fn process_line(&mut self, line: &str) -> ParseOutput {
         match self.state {
@@ -65,13 +56,14 @@ impl AdmonitionParser {
                     let ad_type = captures
                         .name("type")
                         .map(|v| v.as_str())
-                        .expect("Wrong regex!");
+                        .expect("Wrong regex!")
+                        .to_lowercase();
                     let title = captures
                         .name("title")
                         .map(|v| v.as_str())
                         .expect("Wrong regex!");
                     self.state = AdmonitionState::Body;
-                    let replacement = Self::start_admonition(ad_type, title);
+                    let replacement = Self::start_admonition(&ad_type, title);
                     let sanitization = Sanitization::new(line, replacement, false); 
                     return ParseOutput::Placeholder { 
                         replacement: sanitization.get_placeholder(), 
@@ -104,7 +96,7 @@ impl AdmonitionParser {
                                 // it will be substituted back AFTER markdown compilation.
                                 // The original line simply gets added back to the content
                                 // unchanged.
-                                let addition = "</div>";
+                                let addition = "</div></div>";
                                 let sanitization = Sanitization::new(
                                         addition.to_string(), 
                                         addition.to_string(), false);
@@ -125,7 +117,7 @@ impl AdmonitionParser {
                             // the admonition.
                             self.state = AdmonitionState::Idle; 
 
-                            let addition = "</div>";
+                            let addition = "</div></div>";
                             let sanitization = Sanitization::new(addition, addition, false);
                             let replacement = line.to_string() + "\n" + &sanitization.get_placeholder();
                             let placeholder = Some(sanitization);

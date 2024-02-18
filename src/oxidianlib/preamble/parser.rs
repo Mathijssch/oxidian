@@ -1,6 +1,5 @@
 use super::errors::SyntaxError;
 use super::lexer::{SyntaxErr, Token, Lexer};
-use log::info;
 
 type ParseResult = Result<TexCommand, SyntaxErr>;
 

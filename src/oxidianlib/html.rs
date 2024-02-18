@@ -16,11 +16,13 @@ pub fn wrap_html_raw<T: AsRef<str>, U: AsRef<str>, V: AsRef<str>>(
     );
 }
 
+#[allow(dead_code)]
 /// Generate a video tag to the given `src` video.
 pub fn video_tag(src: &str) -> String {
     wrap_html_raw("", "video", &format!("src=\"{}\"", src))
 }
 
+#[allow(dead_code)]
 /// Generate an image tag to the given `src` image.
 pub fn img_tag(src: &str) -> String {
     wrap_html_raw("", "img", &format!("src=\"{}\"", src))
@@ -46,6 +48,7 @@ pub fn ul<T: std::fmt::Display, U: Iterator<Item = T>>(src: U, options: &str) ->
     )
 }
 
+#[allow(dead_code)]
 /// Generate a header of the provided level
 pub fn header<T: AsRef<str>>(level: u8, content: T, options: &str) -> String {
     wrap_html_raw(content, format!("h{}", level), options)
@@ -156,7 +159,7 @@ impl<'a> HtmlTag<'a>
     fn format_attrs(&self) -> String {
         let mut result = "".to_string();
         for (attr_name, attr_value) in self.options.iter() {
-            result.push_str(&format!("{}=\"{}\" ", attr_name, attr_value));
+            result.push_str(&format!(" {}=\"{}\"", attr_name, attr_value));
         }
         result
     }
@@ -178,9 +181,9 @@ impl<'a> HtmlTag<'a>
 
     fn format_tag_attrs(&self) -> String {
         match self.tag_type {
-            TagType::Img(src) => format!("src=\"{}\"", src),
-            TagType::Video(src) => format!("src=\"{}\"", src),
-            TagType::A(href) => format!("href=\"{}\"", href),
+            TagType::Img(src) => format!(" src=\"{}\"", src),
+            TagType::Video(src) => format!(" src=\"{}\"", src),
+            TagType::A(href) => format!(" href=\"{}\"", href),
             _ => "".to_string()
         }
     }
@@ -212,7 +215,7 @@ impl<'a> HtmlTag<'a>
             false => "\n"
         };
 
-        format!("<{tag} {tag_attrs} {classes}{idname}{attrs}>{linebreak}{content}{linebreak}</{tag}>", 
+        format!("<{tag}{tag_attrs}{classes}{idname}{attrs}>{linebreak}{content}{linebreak}</{tag}>", 
             tag=tag_fmt, tag_attrs=tag_attr, 
             classes=cls_fmt, idname=id_fmt, attrs=attr_fmt, 
             content=content, linebreak=linebreak

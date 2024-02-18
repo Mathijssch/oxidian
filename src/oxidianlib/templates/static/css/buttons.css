@@ -1,0 +1,44 @@
+button { 
+    padding: 5px;
+    background: none;
+    color: rgb(var(--text-color));
+    border: none;
+    cursor: pointer;
+    min-height: 0;
+    -webkit-transition: color 200ms linear; /*Nice animation on hover*/
+    -ms-transition: color 200ms linear;
+    transition: color 200ms linear;
+}
+
+button.closebtn {
+    background: none;
+    padding-right: 5px;
+    padding-top: 5px;
+    color: var(--text-color);
+    position: absolute;
+    right: 0px;
+    top: 0px;
+}
+
+button.openbtn {
+    font-size: x-large;
+    color: var(--text-color);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* The button used to open the sidebar */
+button:hover {
+    color: #666;
+}
+
+#navbutton {
+    padding: 0;
+    top: 0;
+    left: 0;
+    min-width: 20px;
+    list-style-type: none;
+    visibility: hidden;
+    position: fixed;
+}
+

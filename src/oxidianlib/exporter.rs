@@ -1,16 +1,17 @@
 use crate::oxidianlib::filesys::copy_directory;
-use crate::oxidianlib::load_static::{LOAD_KATEX, LOAD_MATHJAX, LOAD_SEARCH, SEARCH_HTML};
+use crate::oxidianlib::load_static::{
+    BUTTON_CSS, DARKMODE_SCRIPT, HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG, LOAD_KATEX,
+    LOAD_MATHJAX, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_HTML, SEARCH_SCRIPT, STOPWORDS, FOUC_SCRIPT,
+};
 use crate::oxidianlib::utils::move_to;
 use log::{debug, info, warn};
 use serde_json;
 
 use super::config::{ExportConfig, MathEngine};
 use super::constants::TAG_DIR;
-use super::filesys::{get_all_notes_exclude, slugify_path, write_to_file};
+use super::filesys::{self, get_all_notes_exclude, slugify_path, write_to_file};
 use super::link::Link;
-use super::load_static::{
-    HTML_TEMPLATE, KATEX_CFG, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_SCRIPT, STOPWORDS,
-};
+use super::load_static::ADMONITIONS_CSS;
 use super::preamble::formatter::FormatPreamble;
 use super::search::SearchEntry;
 use super::tag_tree::Tree;
@@ -334,12 +335,8 @@ impl<'a> Exporter<'a> {
 
         if self.cfg.search.enable {
             subtime = Instant::now();
-            info!("Adding search script");
-            self.save_search_script();
             info!("Converted preamble in {:?}", Instant::now() - subtime);
         }
-        info!("saving navbar script");
-        self.save_navbar_script();
 
         self.set_search_loading_snip();
         self.set_search_component();
@@ -391,7 +388,14 @@ impl<'a> Exporter<'a> {
         let stopwords: Vec<&str> = STOPWORDS.lines().collect();
         let search_index: Vec<SearchEntry> = notes
             .iter()
-            .map(|note| SearchEntry::new(note, stopwords.iter(), Some(self.cfg.search.max_len), self.input_dir))
+            .map(|note| {
+                SearchEntry::new(
+                    note,
+                    stopwords.iter(),
+                    Some(self.cfg.search.max_len),
+                    self.input_dir,
+                )
+            })
             .collect();
 
         // Serialize the Vec to a JSON string
@@ -400,11 +404,15 @@ impl<'a> Exporter<'a> {
 
         // Write the JSON string to a file
         let size = write_to_file(
-            &self.output_dir.join("static").join("js").join("search_index.json"),
+            &self
+                .output_dir
+                .join("static")
+                .join("js")
+                .join("search_index.json"),
             &json_string,
         )
         .expect("Could not write search index to file.");
-        info!("Saved search index of {:2.2}kb", (size as f64)/1024.);
+        info!("Saved search index of {:2.2}kb", (size as f64) / 1024.);
     }
 
     fn process_tags_from_vec(&mut self, notes: &Vec<note::Note>) {
@@ -441,17 +449,69 @@ impl<'a> Exporter<'a> {
         return self.output_dir.join("static");
     }
 
-    fn save_navbar_script(&self) {
-        let output = self.output_static_path().join("js").join("navbar.js");
-        write_to_file(&output, NAVBAR_SCRIPT).expect("Couldn't write the navbar script to a file.");
+    fn save_static_text<T: AsRef<Path>>(&self, content: &str, path: T) {
+        let output = self.output_static_path().join(path);
+        match write_to_file(&output, content) {
+            Ok(size) => {
+                info!(
+                    "Wrote {:2.2}kb to `{}`",
+                    utils::byte_to_kb(size),
+                    output.to_string_lossy()
+                );
+            }
+            Err(e) => {
+                warn!(
+                    "Could not write to file `{}`. Got error {}",
+                    output.to_string_lossy(),
+                    e
+                );
+            }
+        };
     }
 
-    fn save_search_script(&self) {
-        let output = self.output_static_path().join("js").join("search.js");
-        write_to_file(&output, SEARCH_SCRIPT).expect("Couldn't write the search script to a file.");
+    fn save_static_binary<T: AsRef<Path>>(&self, content: &[u8], path: T) {
+        let output = self.output_static_path().join(path);
+        match filesys::write_bin_to_file(&output, content) {
+            Ok(size) => {
+                info!(
+                    "Wrote {:2.2}kb to `{}`",
+                    utils::byte_to_kb(size),
+                    output.to_string_lossy()
+                );
+            }
+            Err(e) => {
+                warn!(
+                    "Could not write to file `{}`. Got error {}",
+                    output.to_string_lossy(),
+                    e
+                );
+            }
+        };
+    }
+
+    fn save_javascript<T: AsRef<Path>>(&self, js_content: &str, path: T) {
+        self.save_static_text(js_content, Path::new("js").join(path));
+    }
+
+    fn save_css<T: AsRef<Path>>(&self, content: &str, path: T) {
+        self.save_static_text(content, Path::new("css").join(path));
+    }
+
+    fn save_default_js(&self) {
+        self.save_javascript(NAVBAR_SCRIPT, "navbar.js");
+        self.save_javascript(SEARCH_SCRIPT, "search.js");
+        self.save_javascript(DARKMODE_SCRIPT, "toggle_darkmode.js");
+        self.save_javascript(FOUC_SCRIPT, "fix_fouc.js");
+    }
+
+    fn save_default_css(&self) {
+        self.save_css(INDEX_CSS, "index.css");
+        self.save_css(BUTTON_CSS, "buttons.css");
+        self.save_css(ADMONITIONS_CSS, "admonitions.css");
     }
 
     fn copy_static_files(&self) {
+        let mut copy_successful = false;
         if let Some(static_dir) = &self.cfg.static_dir {
             let static_dir_path = &self.input_dir.join(static_dir);
             info!("Copying static directory {:?}", static_dir_path);
@@ -460,10 +520,19 @@ impl<'a> Exporter<'a> {
                     "Could not copy the static directory {:?} to {:?}. Got error {:?}",
                     static_dir_path, self.output_dir, copy_err
                 );
+            } else {
+                copy_successful = true;
             }
         } else {
-            warn!("No template directory was provided. Using the default template.");
+            warn!("No static directory was provided. Using the default static assets.");
         }
+        if !copy_successful {
+            info!("Copying default css");
+            self.save_default_css();
+            info!("saving icon");
+            self.save_static_binary(ICON, "icon.svg");
+        }
+        self.save_default_js();
     }
 
     fn add_backlinks_to_note<'b>(

@@ -1,14 +1,164 @@
+const MINWIDTH = 140;
+const MARGIN_ARTICLE=20;
+const DEFAULT_NAV_WIDTH=200;  // Default width of the navbar in pixels 
+const IDNavWidth = "navwidth";  // ID in localstorage for the navigator width.
+const SMALLWIDTHTHRES = 500;    // Threshold for small screen sizes.
+
+let resizer = document.getElementById("navbar_resizer");
+let navbar = document.querySelector("#navbar");
+let navbarContainer = document.querySelector("#navbar-container");
+let main = document.querySelector("#main"); 
+let rectangle = navbar.getBoundingClientRect();
+console.log(rectangle.width);
+let currX = rectangle.x + rectangle.width;
+let dragging = false;
+
+//window.onload = initialize;
+initialize();
+
+function initialize()
+{
+  let initWidth = loadStoredWidth();
+  setWidth(initWidth);
+    console.log("Navbar is loaded!");
+};
+
+function isClosed(navbar){
+  return navbar.style.visibility == "hidden";
+}
+
+function configureVertical(x){
+  //Configure the screen for vertical mode. 
+  navbar.style.width = "100%";
+  main.style.width = "100%";
+}
+
+function loadStoredWidth(){
+  // Load the width of the navbar from local storage. If it is not stored, then return the default. 
+  let width = parseFloat(localStorage.getItem(IDNavWidth));
+  if (isNaN(width)) {  // width had not been set 
+    console.log("Width had not been set yet.");
+    return DEFAULT_NAV_WIDTH; 
+  }
+  console.log("Loaded ", width);
+  return width
+}
+
+
+function setWidthRaw(width) {
+  //Auxiliary function that sets the width of the nav (and the main section)
+  let style = getComputedStyle(navbarContainer)
+  let newWidth = (width - (parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)) );
+  navbarContainer.style.width = newWidth + "px";
+  style = getComputedStyle(navbarContainer);
+  let maxwidth = parseFloat(getComputedStyle(document.body).getPropertyValue('--max-nav-width'));
+  // console.log("Fullwidthnav", newWidth); 
+  newWidth = Math.min(newWidth, maxwidth);
+  main.style.marginLeft = MARGIN_ARTICLE + newWidth + "px";
+}
+
+function setWidth(width){
+  if (width < MINWIDTH && ~isClosed(navbar)) {
+    console.log("Closing time!");
+    closeNav();
+  }
+  else {
+    if (isClosed(navbar)){openNav();}
+    setWidthRaw(width);
+  }
+}
+
+/* Set the width of the sidebar to 250px and the left margin of the page content to 250px */
+function onNavButton() {
+  setWidth(DEFAULT_NAV_WIDTH);
+}
+
 /* Set the width of the sidebar to 250px and the left margin of the page content to 250px */
 function openNav() {
-    document.getElementById("navbar").style.visibility = "visible";
+    console.log("Opening navbar");
+    animationExpand(); 
+    animationShiftArticle();
+    navbar.style.visibility = "visible";
     document.getElementById("navbutton").style.visibility = "hidden";
-    document.getElementById("main").style.marginLeft = "340px"; 
+    // document.getElementById("navbar_resizer").style.left = "";
+    // document.getElementById("navbar_resizer").style.right = "0px";
   }
+
+function animationExpand(){
+  navbarContainer.classList.add('expand');
+  setTimeout(()=> {
+    navbarContainer.classList.remove('expand')
+  }, 500)
+}
+
+function animationShiftArticle(){
+  main.classList.add("shift-anim"); 
+  setTimeout(()=> {
+    navbarContainer.classList.remove('shift-anim')
+  }, 500)
+}
+
   
   /* Set the width of the sidebar to 0 and the left margin of the page content to 0 */
   function closeNav() {
-    document.getElementById("navbar").style.visibility = "hidden";
-    document.getElementById("navbutton").style.visibility = "visible";
-    document.getElementById("main").style.marginLeft = "100px"; 
-    // document.getElementById("main").style.marginLeft = "0";
+    // Disable the navbar itself 
+    animationExpand();
+    animationShiftArticle();
+    navbar.style.visibility = "hidden";
+    // Enable the hamburger button 
+    let hamburger = document.getElementById("navbutton"); 
+    hamburger.style.visibility = "visible"; 
+    
+    // Set the width of the navbar container to the width of the hamburger button.
+    let hamburgerRect = hamburger.getBoundingClientRect();
+    navbarContainer.style.width= hamburgerRect.width + "px";
+    document.getElementById("main").style.marginLeft = "100px";
+    document.getElementById("navbar_resizer").style.visibility = "visible";
+    // document.getElementById("navbar_resizer").style.right = "0px";
+    document.getElementById("main").style.marginLeft = hamburgerRect.width + MARGIN_ARTICLE + "px";
   }
+
+
+if (resizer != null) {
+  window.addEventListener("mousedown", mousedown);
+  window.addEventListener("mouseup", mouseup);
+  window.addEventListener("mousemove", mousemove); 
+
+  function mousedown(event) {
+    if (resizer == event.target){
+      pauseEvent(event);
+      dragging = true;
+    }
+  }
+
+  function mousemove(event) {
+    if (dragging) {
+      pauseEvent(event);
+      setWidth(event.clientX);
+    }
+    
+  }
+
+  function mouseup(event) {
+    if (dragging) {
+      console.log("Storing new nav width", event.clientX);
+      localStorage.setItem(IDNavWidth, event.clientX);
+    }
+    dragging = false;
+  }
+
+}
+
+function pauseEvent(e){
+  // Pause bubbling of an event to make sure selection is not activated during dragging. 
+  if(e.stopPropagation) e.stopPropagation();
+  if(e.preventDefault) e.preventDefault();
+  e.cancelBubble=true;
+  e.returnValue=false;
+  return false;
+}
+
+
+function onResizeWindow(){
+  // initialize();
+}

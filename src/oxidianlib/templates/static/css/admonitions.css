@@ -1,0 +1,103 @@
+body {
+--admonition-rgb: 68, 138, 255;
+--background-secondary: #f2f3f5;
+}
+
+.admonition {
+    margin: 1.5625em 0;
+    padding: 0;
+    overflow: hidden;
+    color: var(--text-color);
+    page-break-inside: avoid;
+    background-color: var(--bg-color);
+    border: 1px solid rgb(var(--admonition-rgb));
+    border-radius: 0.3rem;
+    box-shadow: 0 0.2rem 0.5rem var(--background-modifier-box-shadow);
+}
+
+.admonition-title {
+    position: relative;
+    padding: 0.6rem 0.25em;
+    font-family: sans;
+    font-weight: bold;
+    background-color: rgba(var(--admonition-rgb), 0.05);
+    color: rgb(var(--admonition-rgb));
+}
+
+.admonition-title::before {
+    font-family: FontAwesome;
+    content: "";
+    display: inline-block;
+    padding: 0.6rem 0.35em;
+}
+
+.admonition.faq, .admonition.question { 
+    --admonition-rgb: 219, 205, 9;
+}
+
+.admonition.example { 
+    --admonition-rgb: 17, 223, 130;
+}
+
+
+.admonition.info, .admonition.todo { 
+    --admonition-rgb: 0, 191, 255;
+}
+
+.admonition.quote, .admonition.cite { 
+    --admonition-rgb: 189, 174, 143;
+}
+
+.admonition.error, .admonition.failure{ 
+    --admonition-rgb: 189, 38, 38;
+}
+
+.admonition.bug { 
+    --admonition-rgb: 143, 72, 146; 
+}
+
+.admonition.warning { 
+    --admonition-rgb: 255, 108, 17; 
+}
+
+
+.admonition-title.faq::before, .admonition-title.question::before{
+    content: "\f059";
+}
+
+.admonition-title.info::before, .admonition-title.todo::before{
+    content: "\f05a";
+}
+
+.admonition-title.quote::before, .admonition-title.cite::before{
+    content: "\f10d";
+}
+
+.admonition-title.error::before, .admonition-title.failure::before {
+    content: "\f00d";
+}
+
+.admonition-title.bug::before {
+    content: "\f188";
+}
+
+.admonition-title.warning::before { 
+    content: "\f071";
+}
+
+.admonition-title.example::before {
+    content: "\f7d9";
+}
+
+.admonition-content-holder {
+    position: relative;
+}
+
+.admonition-content {
+    margin: 10px 15px;
+    position: relative;
+    overflow-x: auto;
+}
+
+
+
