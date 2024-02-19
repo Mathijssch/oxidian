@@ -1,12 +1,12 @@
 const DARKMODE_KEY = "darkmode-desired";
 
 let darkmodeDesired = localStorage.getItem(DARKMODE_KEY) == 'true'; 
-console.log("Darkmode requested: ", darkmodeDesired);
+////console.log("Darkmode requested: ", darkmodeDesired);
 if (darkmodeDesired) {        
-    console.log("dark mode");
+    ////console.log("dark mode");
     toggleLightMode();
 }
-console.log("light mode");
+////console.log("light mode");
 
 function toggleLightMode() {
     let element = document.documentElement;

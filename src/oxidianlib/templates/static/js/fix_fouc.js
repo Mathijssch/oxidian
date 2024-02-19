@@ -7,6 +7,5 @@ let domReady = (cb) => {
 
 domReady(() => {
   // Display body when DOM is loaded
-  console.log("Loaded! Show it!")
   document.body.style.visibility = 'visible';
 });

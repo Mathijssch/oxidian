@@ -2,5 +2,5 @@
 links = document.querySelectorAll('a.broken');
 links.forEach((link) => {
     link.href = '';
-    link.style.textDecorationStyle = "wavy";
+    link.style.textDecoration = "none";
 });

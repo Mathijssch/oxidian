@@ -5,7 +5,7 @@ function build_link_of_result(res) {
 }
 
 function present_search_results(results) {
-    console.log(results[0].obj)
+    ////console.log(results[0].obj)
     math_html = results.map(match => `<li> ${build_link_of_result(match)}</li>`);
     document.getElementById("filter").innerHTML = math_html.join("\n");
 }

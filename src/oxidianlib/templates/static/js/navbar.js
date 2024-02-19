@@ -9,7 +9,7 @@ let navbar = document.querySelector("#navbar");
 let navbarContainer = document.querySelector("#navbar-container");
 let main = document.querySelector("#main"); 
 let rectangle = navbar.getBoundingClientRect();
-console.log(rectangle.width);
+////console.log(rectangle.width);
 let currX = rectangle.x + rectangle.width;
 let dragging = false;
 
@@ -20,7 +20,7 @@ function initialize()
 {
   let initWidth = loadStoredWidth();
   setWidth(initWidth);
-    console.log("Navbar is loaded!");
+   //console.log("Navbar is loaded!");
 };
 
 function isClosed(navbar){
@@ -37,10 +37,10 @@ function loadStoredWidth(){
   // Load the width of the navbar from local storage. If it is not stored, then return the default. 
   let width = parseFloat(localStorage.getItem(IDNavWidth));
   if (isNaN(width)) {  // width had not been set 
-    console.log("Width had not been set yet.");
+   //console.log("Width had not been set yet.");
     return DEFAULT_NAV_WIDTH; 
   }
-  console.log("Loaded ", width);
+ //console.log("Loaded ", width);
   return width
 }
 
@@ -52,14 +52,14 @@ function setWidthRaw(width) {
   navbarContainer.style.width = newWidth + "px";
   style = getComputedStyle(navbarContainer);
   let maxwidth = parseFloat(getComputedStyle(document.body).getPropertyValue('--max-nav-width'));
-  // console.log("Fullwidthnav", newWidth); 
+  ////console.log("Fullwidthnav", newWidth); 
   newWidth = Math.min(newWidth, maxwidth);
   main.style.marginLeft = MARGIN_ARTICLE + newWidth + "px";
 }
 
 function setWidth(width){
   if (width < MINWIDTH && ~isClosed(navbar)) {
-    console.log("Closing time!");
+   //console.log("Closing time!");
     closeNav();
   }
   else {
@@ -75,7 +75,7 @@ function onNavButton() {
 
 /* Set the width of the sidebar to 250px and the left margin of the page content to 250px */
 function openNav() {
-    console.log("Opening navbar");
+   //console.log("Opening navbar");
     animationExpand(); 
     animationShiftArticle();
     navbar.style.visibility = "visible";
@@ -141,7 +141,7 @@ if (resizer != null) {
 
   function mouseup(event) {
     if (dragging) {
-      console.log("Storing new nav width", event.clientX);
+     //console.log("Storing new nav width", event.clientX);
       localStorage.setItem(IDNavWidth, event.clientX);
     }
     dragging = false;

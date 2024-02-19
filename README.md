@@ -29,8 +29,9 @@
 - [ ] Implement decent styling and frontend functionality in default template.
     - [x] Mathjax / KaTeX support 
         - [x] Convert .sty preamble to mathjax config
-    - [ ] Navbar styling
-    - [ ] Avoid FOUC
+    - [x] Navbar styling
+    - [x] Avoid FOUC
+- [ ] Add the counts to the tags in the tree
 
 ## Filenames for tags {#tags}
 
