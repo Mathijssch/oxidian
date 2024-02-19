@@ -14,12 +14,28 @@ impl Sanitization {
     pub fn get_placeholder(&self) -> String {
         let mut hasher = DefaultHasher::new();
         self.hash(&mut hasher);
-        return format!("{{{{ {} }}}}", hasher.finish());
+        format!("{{{{ {} }}}}", hasher.finish())
+    }
+
+    pub fn after_md<T: Into<String> + Clone >(string: T) -> Self {
+        let replacement = string.clone();
+        Sanitization { original: string.into(), 
+            replacement: replacement.into(),
+            before_markdown: false }
+    }
+
+    pub fn before_md<T: Into<String> + Clone >(string: T) -> Self {
+        let replacement = string.clone();
+        Sanitization { original: string.into(), 
+            replacement: replacement.into(),
+            before_markdown: true }
     }
 
     pub fn from<T: Into<String> + Clone >(string: T) -> Self {
         let replacement = string.clone();
-        Sanitization { original: string.into(), replacement: replacement.into(), before_markdown: true }
+        Sanitization { original: string.into(), 
+            replacement: replacement.into(),
+            before_markdown: true }
     }
 
     pub fn new<T: Into<String>, V: Into<String>>(original: T, replacement: V, before: bool) -> Self {

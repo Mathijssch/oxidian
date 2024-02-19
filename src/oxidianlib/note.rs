@@ -66,14 +66,14 @@ impl<'a> Note<'a> {
         let prefix = frontmatter
             .and_then(|fm| Self::get_author_prefix(fm))
             .unwrap_or_else(|| String::from(""));
-        return prefix + base_title;
+        prefix + base_title
     }
 
     fn process_links(&self, mut content: String) -> String {
         for link in &self.links {
             content = content.replace(&link.source_string, &formatting::link_to_html(link));
         }
-        return content;
+        content
     }
 
     fn process_tags(&self, mut content: String) -> String {
@@ -97,7 +97,7 @@ impl<'a> Note<'a> {
             }
             updated.push('\n');
         }
-        return updated;
+        updated
     }
     
     // Get a raw version of the notes, not meant for postprocessing, just for extraction of
@@ -214,9 +214,8 @@ impl<'a> Note<'a> {
         if use_git { 
             if let Some(time) = utils::get_git_creation_time(path) {
                 return Ok(time.date());
-            } else { 
-                info!("Failed to read creation date from git");
-            };
+            } 
+            info!("Failed to read creation date from git");
         };
 
         // Try to work from the system time 
@@ -290,7 +289,7 @@ impl<'a> Note<'a> {
             }
             output.push('\n');
         }
-        return output;
+        output
     }
 
 
@@ -345,7 +344,7 @@ impl<'a> Note<'a> {
 
     ///Get rid of the comments and/or other unwanted pieces of text.
     fn sanitize(content: &str) -> String {
-        return strip_comments(content);
+        strip_comments(content)
     }
 
     /// Add a backlink to `self`s set of backlinks. 
@@ -424,7 +423,7 @@ fn strip_comments(note: &str) -> String {
         output.push_str(obs_comments::process_line(line));
         output.push('\n');
     }
-    return output;
+    output
 }
 
 //pub fn print_text_event(e: &Event) {

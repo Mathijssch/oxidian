@@ -4,7 +4,7 @@ use std::cmp;
 
 use super::placeholder::Sanitization;
 
-use log::debug;
+use log::{debug, info};
 
 
 enum MathState {
@@ -15,6 +15,7 @@ enum MathState {
 pub struct DelimPair {
     pub open: String,
     pub close: String,
+    pub before_md: bool,
 }
 
 impl DelimPair {
@@ -22,6 +23,15 @@ impl DelimPair {
         DelimPair {
             open: String::from(open),
             close: String::from(close),
+            before_md: true
+        }
+    }
+
+    pub fn new_after_md(open: &str, close: &str) -> Self {
+        DelimPair {
+            open: String::from(open),
+            close: String::from(close),
+            before_md: false
         }
     }
 }
@@ -34,14 +44,24 @@ fn get_search_pattern<'a>(state: &MathState, pair: &'a DelimPair) -> &'a str {
 }
 
 
-fn get_placeholders<T: Iterator<Item=(usize, usize)>>(content: &str, ranges: T) -> Vec<Sanitization> {
+fn get_placeholders_after<T: Iterator<Item=(usize, usize)>>(content: &str, ranges: T) -> Vec<Sanitization> {
     ranges.map(
-        |(start, end)| Sanitization::from(&content[start..end]) 
+        |(start, end)| Sanitization::after_md(&content[start..end]) 
+    ).collect()
+}
+
+fn get_placeholders_before<T: Iterator<Item=(usize, usize)>>(content: &str, ranges: T) -> Vec<Sanitization> {
+    ranges.map(
+        |(start, end)| Sanitization::before_md(&content[start..end]) 
     ).collect()
 }
 
 fn generate_placeholders(content: &str, delim: &DelimPair) -> Vec<Sanitization> {
-    get_placeholders(&content, find_pair_ids(&content, delim).into_iter())
+    if delim.before_md {
+        get_placeholders_before(&content, find_pair_ids(&content, delim).into_iter())
+    } else {
+    get_placeholders_after(&content, find_pair_ids(&content, delim).into_iter())
+    }
 }
 
 
@@ -92,10 +112,10 @@ pub fn disambiguate_protected(content: &str) -> (String, Vec<Sanitization>) {
     let mut result = vec!();
 
     let pairs: [DelimPair; 6] = [
-        DelimPair::new("$$", "$$"),
-        DelimPair::new(r"\[", r"\]"),
-        DelimPair::new("$", "$"),
-        DelimPair::new(r"\(", r"\)"),
+        DelimPair::new_after_md("$$", "$$"),
+        DelimPair::new_after_md(r"\[", r"\]"),
+        DelimPair::new_after_md("$", "$"),
+        DelimPair::new_after_md(r"\(", r"\)"),
         DelimPair::new(r"```", r"```"),
         DelimPair::new(r"`", r"`")
     ];
@@ -109,6 +129,7 @@ pub fn disambiguate_protected(content: &str) -> (String, Vec<Sanitization>) {
         }
         result.extend(sanitize);
     }
+    //debug!("sanitized string:\n{}", new_string);
     (new_string, result)
 }
 
@@ -174,5 +195,29 @@ mod tests {
 ";
         run_basic_test(content, vec!["$$\n    \\mathbb{Y}_{\\mathcal{V}} =  \\{ y \\in \\Re^m \\mid \\F_{\\mathcal{V}} (y) \\neq \\emptyset \\}, \n$$"], "$$", "$$");
     } 
+    
+    #[test]
+    fn test_failure_case_inline_math() {
+        let content = 
+r"
+Let $\{w_t\}_{t \in \N}$ be time-homogeneous Markov chain, defined 
+on some probability space $(\Omega, \mathcal{F}, \prob)$ and taking 
+values on the finite set $\W \dfn \{1,\dots, \nModes\}$.
+";
+        run_basic_test(content, vec![r"$\{w_t\}_{t \in \N}$", r"$(\Omega, \mathcal{F}, \prob)$",
+            r"$\W \dfn \{1,\dots, \nModes\}$"], "$", "$");
+    }
+
+    #[test]
+    fn test_failure_case_display_then_inline_math() {
+        let content = 
+r"
+Let $\{w_t\}_{t \in \N}$ be time-homogeneous Markov chain, defined 
+on some probability space $(\Omega, \mathcal{F}, \prob)$ and taking 
+values on the finite set $\W \dfn \{1,\dots, \nModes\}$.
+";
+        run_basic_test(content, vec![r"$\{w_t\}_{t \in \N}$", r"$(\Omega, \mathcal{F}, \prob)$",
+            r"$\W \dfn \{1,\dots, \nModes\}$"], "$", "$");
+    }
 }
 

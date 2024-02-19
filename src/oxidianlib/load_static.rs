@@ -14,6 +14,7 @@ pub const SEARCH_SCRIPT: &str = include_str!("templates/static/js/search.js");
 pub const NAVBAR_SCRIPT: &str = include_str!("templates/static/js/navbar.js");
 pub const DARKMODE_SCRIPT: &str = include_str!("templates/static/js/toggle_darkmode.js");
 pub const FOUC_SCRIPT: &str = include_str!("templates/static/js/fix_fouc.js");
+pub const BROKEN_LINKS: &str = include_str!("templates/static/js/disable_broken_links.js");
 
 // HTML snippets
 pub const LOAD_MATHJAX: &str = include_str!("templates/snippets/include_mathjax.html");

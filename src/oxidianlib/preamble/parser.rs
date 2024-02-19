@@ -23,7 +23,6 @@ pub struct TexCommand {
 }
 
 
-
 impl TexCommand {
     
     pub fn new<C: Into<String>, D: Into<String>>(
@@ -43,14 +42,14 @@ impl TexCommand {
     #[allow(dead_code)]  // Useful for testing purposes.
     pub fn with_args(mut self, count: u8) -> Self {
         self.argc = Some(count);
-        return self
+        self
     }
 
     #[allow(dead_code)]  // Useful for testing purposes.
     pub fn with_defaults<T: Into<String>>(mut self, count: u8, defaults: T) -> Self {
         self.argc = Some(count);
         self.default_args = Some(defaults.into());
-        return self
+        self
     }
 
     #[allow(dead_code)]  // Useful for testing purposes.
@@ -257,10 +256,10 @@ impl CommandParseState {
             Token::CloseCurly => { 
                 if depth > 0 {
                     //println!("Moving to depth {}", depth - 1);
-                    return Ok(Self::Impl(token.into(), depth - 1))
+                    Ok(Self::Impl(token.into(), depth - 1))
                 } else {
                     //println!("Done!");
-                    return Ok(Self::Done)
+                    Ok(Self::Done)
                 }
             }, 
             Token::OpenCurly => { 
@@ -392,7 +391,7 @@ impl<'a, T: Iterator<Item = Token>> Iterator for PreambleParser<T> {
                 _ => {}
             }
         }
-        return None;
+        None
     }
 }
 
@@ -471,4 +470,54 @@ mod tests {
     fn missing_body() {
         test_invalid(r"\newcommand{\myOperator}");
     }
+
+    #[test]
+    fn test_no_skip_with_newlines() {
+        let input = 
+r"\newcommand{\d}{\mathrm{d}}							  % differential
+\DeclareMathOperator{\infconv}{{\small\square}}
+
+\newcommand{\nfd}{{}\mathop{=\mathrel{:}}{}}			  % inverted '\dfn'
+\newcommand{\dfn}{{}\mathop{\mathrel{:}=}{}}			  % defined as
+
+\newcommand{\sstar}{\scriptstyle\star}					  % \sstar small star
+\newcommand{\ssstar}{\scriptscriptstyle\star}			  % \ssstar very small star
+";
+        //assert_eq!(parse_preamble(input).count(), 6);
+        test_valid(&input, &[
+            TexCommand::newcommand(r"\d", r"\mathrm{d}"),
+            TexCommand::declare_math_operator(r"\infconv", r"{\small\square}"),
+            TexCommand::newcommand(r"\nfd", r"{}\mathop{=\mathrel{:}}{}"),
+            TexCommand::newcommand(r"\dfn", r"{}\mathop{\mathrel{:}=}{}"),
+            TexCommand::newcommand(r"\sstar", r"\scriptstyle\star"),
+            TexCommand::newcommand(r"\ssstar", r"\scriptscriptstyle\star")
+        ])
+    }
+
+    #[test]
+    fn test_no_skip_no_newlines() {
+        let input = 
+r"\newcommand{\d}{\mathrm{d}}							  % differential
+\DeclareMathOperator{\infconv}{{\small\square}}
+\newcommand{\nfd}{{}\mathop{=\mathrel{:}}{}}			  % inverted '\dfn'
+\newcommand{\dfn}{{}\mathop{\mathrel{:}=}{}}			  % defined as
+\newcommand{\sstar}{\scriptstyle\star}					  % \sstar small star
+\newcommand{\ssstar}{\scriptscriptstyle\star}			  % \ssstar very small star
+";
+        assert_eq!(parse_preamble(input).count(), 6);
+    }
+
+    #[test]
+    fn test_no_skip_no_newlines_only_newcommand() {
+        let input = 
+r"\newcommand{\d}{\mathrm{d}}							  % differential
+\newcommand{\infconv}{{\small\square}}
+\newcommand{\nfd}{{}\mathop{=\mathrel{:}}{}}			  % inverted '\dfn'
+\newcommand{\dfn}{{}\mathop{\mathrel{:}=}{}}			  % defined as
+\newcommand{\sstar}{\scriptstyle\star}					  % \sstar small star
+\newcommand{\ssstar}{\scriptscriptstyle\star}			  % \ssstar very small star
+";
+        assert_eq!(parse_preamble(input).count(), 6);
+    }
+
 }

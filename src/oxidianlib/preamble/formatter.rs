@@ -1,4 +1,5 @@
 use super::parser::{parse_preamble, Declarator};
+use log::warn;
 
 
 pub trait FormatPreamble {
@@ -24,7 +25,7 @@ pub trait FormatPreamble {
                     }
                 } 
             } else {
-                println!("could not parse command: {}.", command.unwrap_err());
+                warn!("could not parse command: {}.", command.unwrap_err());
             }
         }
         output.join(",\n").replace("\\", "\\\\")

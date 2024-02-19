@@ -11,7 +11,7 @@ use super::config::{ExportConfig, MathEngine};
 use super::constants::TAG_DIR;
 use super::filesys::{self, get_all_notes_exclude, slugify_path, write_to_file};
 use super::link::Link;
-use super::load_static::ADMONITIONS_CSS;
+use super::load_static::{ADMONITIONS_CSS, BROKEN_LINKS};
 use super::preamble::formatter::FormatPreamble;
 use super::search::SearchEntry;
 use super::tag_tree::Tree;
@@ -82,7 +82,7 @@ fn get_all_notes<'b>(
             Some(note::Note::new(path, &input_dir, search_for_linked_files, ignore).unwrap())
         })
     });
-    return all_notes.collect();
+    all_notes.collect()
 }
 
 //fn iter_notes<'a, 'b>(
@@ -134,7 +134,7 @@ impl<'a> Exporter<'a> {
         for note in notes {
             self.update_backlinks(&mut backlinks, &note);
         }
-        return backlinks;
+        backlinks
     }
 
     //#[allow(dead_code)]
@@ -446,7 +446,7 @@ impl<'a> Exporter<'a> {
         if let Some(static_in) = &self.cfg.static_dir {
             return self.output_dir.join(static_in);
         }
-        return self.output_dir.join("static");
+        self.output_dir.join("static")
     }
 
     fn save_static_text<T: AsRef<Path>>(&self, content: &str, path: T) {
@@ -502,6 +502,7 @@ impl<'a> Exporter<'a> {
         self.save_javascript(SEARCH_SCRIPT, "search.js");
         self.save_javascript(DARKMODE_SCRIPT, "toggle_darkmode.js");
         self.save_javascript(FOUC_SCRIPT, "fix_fouc.js");
+        self.save_javascript(BROKEN_LINKS, "disable_broken_links.js");
     }
 
     fn save_default_css(&self) {
@@ -561,9 +562,9 @@ impl<'a> Exporter<'a> {
         let slugged = slugify_path(&internal_path, extension)
             .map_err(|_| super::errors::NotePathError::NoStem(path))?;
         if has_prefix {
-            return Ok(self.input_dir.join(&slugged));
+            Ok(self.input_dir.join(&slugged))
         } else {
-            return Ok(slugged);
+            Ok(slugged)
         }
     }
 
