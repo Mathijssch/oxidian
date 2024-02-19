@@ -197,7 +197,6 @@ impl CommandParseState {
                     .map_err(|_| SyntaxErr::InvalidNumber(token.clone()))?,
             )),
             Token::CloseBracket => Ok(Self::CloseArgCount),
-            //Token::OpenBracket => Ok(Self::OpenArgCount),
             _ => Err(SyntaxError::UnexpectedToken( 
                     vec![Token::Text("<Argument count>".to_string()),
                          Token::CloseBracket],
@@ -242,36 +241,22 @@ impl CommandParseState {
             Token::CloseCurly => Ok(Self::Done),
             Token::OpenCurly => Ok(Self::Impl(token.into(), 1)),
             _ => {Ok(Self::Impl(token.into(), 0))}
-            //Token::Text(implementation) => Ok(Self::Impl(implementation.to_string())),
-            //_ => Err(SyntaxError::UnexpectedToken(
-            //    Token::Text("<Definition>".to_string()),
-            //    token.clone(),
-            //)),
         }
     }
     fn from_impl(&self, token: &Token) -> Result<Self, SyntaxErr> {
-        //println!("Getting token {:?}", token);
         let depth = self.get_curly_depth();
         match token {
             Token::CloseCurly => { 
                 if depth > 0 {
-                    //println!("Moving to depth {}", depth - 1);
                     Ok(Self::Impl(token.into(), depth - 1))
                 } else {
-                    //println!("Done!");
                     Ok(Self::Done)
                 }
             }, 
             Token::OpenCurly => { 
-                //println!("Moving to depth {}", depth + 1);
                 Ok(Self::Impl(token.into(), depth + 1)) 
             }
             _ => {Ok(Self::Impl(token.into(), depth))}
-            //Token::CloseCurly => Ok(Self::Done),
-            //_ => Err(SyntaxError::UnexpectedToken(
-            //    Token::CloseCurly,
-            //    token.clone(),
-            //)),
         }
     }
 }
@@ -306,6 +291,7 @@ impl<T: Iterator<Item = Token>> PreambleParser<T> {
         let declarator = Declarator::try_from(token)?;
 
         while let Some(subtoken) = self.lexer.next() {
+            parser_state.next_state(&subtoken)?;
             match &parser_state {
                 CommandParseState::OpenArgCount
                 | CommandParseState::ArgCount(_)
@@ -332,7 +318,6 @@ impl<T: Iterator<Item = Token>> PreambleParser<T> {
                 }
                 _ => {}
             };
-            parser_state.next_state(&subtoken)?;
         }
         Err(SyntaxError::PrematureEnd)
     }
@@ -346,9 +331,6 @@ impl<T: Iterator<Item = Token>> PreambleParser<T> {
         let declarator = Declarator::try_from(token)?;
         while let Some(subtoken) = self.lexer.next() {
             parser_state.next_state(&subtoken)?;
-            //println!("Current impl: {}", command_impl);
-            //println!("Current state: {:?}", &parser_state);
-            //println!("Handling {:?}", subtoken);
             match &parser_state {
                 CommandParseState::Name(name, _) => {
                     command_name = name.to_string();
@@ -495,7 +477,7 @@ r"\newcommand{\d}{\mathrm{d}}							  % differential
     }
 
     #[test]
-    fn test_no_skip_no_newlines() {
+    fn test_no_skip_no_newlines_with_operator() {
         let input = 
 r"\newcommand{\d}{\mathrm{d}}							  % differential
 \DeclareMathOperator{\infconv}{{\small\square}}
@@ -504,7 +486,14 @@ r"\newcommand{\d}{\mathrm{d}}							  % differential
 \newcommand{\sstar}{\scriptstyle\star}					  % \sstar small star
 \newcommand{\ssstar}{\scriptscriptstyle\star}			  % \ssstar very small star
 ";
-        assert_eq!(parse_preamble(input).count(), 6);
+        test_valid(&input, &[
+            TexCommand::newcommand(r"\d", r"\mathrm{d}"),
+            TexCommand::declare_math_operator(r"\infconv", r"{\small\square}"),
+            TexCommand::newcommand(r"\nfd", r"{}\mathop{=\mathrel{:}}{}"),
+            TexCommand::newcommand(r"\dfn", r"{}\mathop{\mathrel{:}=}{}"),
+            TexCommand::newcommand(r"\sstar", r"\scriptstyle\star"),
+            TexCommand::newcommand(r"\ssstar", r"\scriptscriptstyle\star")
+        ])
     }
 
     #[test]
@@ -517,7 +506,14 @@ r"\newcommand{\d}{\mathrm{d}}							  % differential
 \newcommand{\sstar}{\scriptstyle\star}					  % \sstar small star
 \newcommand{\ssstar}{\scriptscriptstyle\star}			  % \ssstar very small star
 ";
-        assert_eq!(parse_preamble(input).count(), 6);
+        test_valid(&input, &[
+            TexCommand::newcommand(r"\d", r"\mathrm{d}"),
+            TexCommand::newcommand(r"\infconv", r"{\small\square}"),
+            TexCommand::newcommand(r"\nfd", r"{}\mathop{=\mathrel{:}}{}"),
+            TexCommand::newcommand(r"\dfn", r"{}\mathop{\mathrel{:}=}{}"),
+            TexCommand::newcommand(r"\sstar", r"\scriptstyle\star"),
+            TexCommand::newcommand(r"\ssstar", r"\scriptscriptstyle\star")
+        ])
     }
 
 }
