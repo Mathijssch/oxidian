@@ -29,9 +29,9 @@ enum AdmonitionState {
 
 impl AdmonitionParser {
     pub fn new() -> Self {
-        return AdmonitionParser {
+        AdmonitionParser {
             state: AdmonitionState::Idle,
-        };
+        }
     }
 
     fn start_admonition(ad_type: &str, title: &str) -> String {
@@ -65,18 +65,18 @@ impl AdmonitionParser {
                     self.state = AdmonitionState::Body;
                     let replacement = Self::start_admonition(&ad_type, title);
                     let sanitization = Sanitization::new(line, replacement, false); 
-                    return ParseOutput::Placeholder { 
+                    ParseOutput::Placeholder { 
                         replacement: sanitization.get_placeholder(), 
                         placeholder: Some(sanitization)
-                    };
+                    }
                 } else {
-                    return ParseOutput::None;
+                    ParseOutput::None
                 }
-            }
+            },
             AdmonitionState::Body | AdmonitionState::SingleBreak => {
                 let trimmed_line = line.trim_start();
                 if trimmed_line.starts_with(">") {
-                    return ParseOutput::Placeholder { 
+                    ParseOutput::Placeholder { 
                         replacement: trimmed_line[1..].to_string(),
                         placeholder: None 
                     }
@@ -108,7 +108,7 @@ impl AdmonitionParser {
                                     };
                             }
                             self.state = AdmonitionState::SingleBreak;
-                            return ParseOutput::None;
+                            ParseOutput::None
                         }
                         AdmonitionState::SingleBreak => {
                             // There already was a break before this
@@ -119,12 +119,13 @@ impl AdmonitionParser {
 
                             let addition = "</div></div>";
                             let sanitization = Sanitization::new(addition, addition, false);
-                            let replacement = line.to_string() + "\n" + &sanitization.get_placeholder();
+                            //let replacement = line.to_string() + "\n" + &sanitization.get_placeholder();
+                            let replacement = sanitization.get_placeholder() + "\n" + line;
                             let placeholder = Some(sanitization);
 
-                            return ParseOutput::Placeholder{
+                            ParseOutput::Placeholder{
                                     replacement, placeholder 
-                                };
+                            }
                         }
                         _ => {
                             panic!("Impossible.");
