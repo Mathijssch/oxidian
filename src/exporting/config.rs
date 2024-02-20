@@ -1,8 +1,8 @@
-
 use std::path::{PathBuf, Path};
 use serde_derive::{Serialize, Deserialize};
 use figment::Error;
-use super::preamble::formatter as fmt;
+use crate::preamble::formatter as fmt;
+use crate::utils::utils;
 
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -93,7 +93,7 @@ pub struct CreationDateConfig {
 impl ExportConfig {
     pub fn from_file<T: AsRef<Path>>(path: T) -> Result<ExportConfig, Error> {
         let path = path.as_ref();
-        super::utils::read_config_from_file(path)
+        utils::read_config_from_file(path)
     }
 }
 

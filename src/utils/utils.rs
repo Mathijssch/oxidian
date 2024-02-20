@@ -7,14 +7,14 @@ use std::{
     time::SystemTime,
 };
 
-use super::constants::TAG_DIR;
-use super::html::HtmlTag;
-use super::link::Dimensions;
-use super::obs_tags::Tag;
-use super::wrap_pulldown_cmark::MarkdownParser;
+use crate::utils::constants::TAG_DIR;
+use crate::components::link::Dimensions;
+use crate::core::html::HtmlTag;
+use crate::exporting::wrap_pulldown_cmark::MarkdownParser;
+use crate::obsidian::tags::Tag;
 use pulldown_cmark::html;
 
-use super::config::ExportConfig;
+use crate::exporting::config::ExportConfig;
 use figment::Error;
 use figment::{
     providers::{Format, Serialized, Toml},
@@ -31,7 +31,9 @@ pub fn read_file_to_str<T: AsRef<Path>>(path: T) -> Result<String, std::io::Erro
     Ok(contents)
 }
 
-pub fn byte_to_kb(bytes: usize) -> f64 { bytes as f64 / 1024. }
+pub fn byte_to_kb(bytes: usize) -> f64 {
+    bytes as f64 / 1024.
+}
 
 ///Get the first char in a string if there is one, else return space.
 ///The default is an arbitrary value which we don't expect in practice.
@@ -63,7 +65,6 @@ pub fn capitalize_first(input: &str) -> String {
     }
 }
 
-
 ///Render a html link to the page of a fully-specified tag (with subtags, separated by `/`.)
 pub fn render_full_tag_link(tag: &str, tag_dir: &Path) -> String {
     let mut path = tag_dir.to_owned();
@@ -75,7 +76,7 @@ pub fn render_full_tag_link(tag: &str, tag_dir: &Path) -> String {
         }
         tag_name = component.clone();
         path.push(generate_tag_page_name(&component));
-    } 
+    }
     HtmlTag::a(path.to_str().unwrap()).wrap(&capitalize_first(tag_name))
 }
 
@@ -129,9 +130,8 @@ pub fn get_git_creation_time<T: AsRef<Path>>(path: T) -> Option<NaiveDateTime> {
         NaiveDateTime::parse_from_str(trimmed_git_date_str.unwrap_or(""), "%Y-%m-%d %H:%M:%S")
     {
         return Some(git_date_parsed);
-    } else {
-        println!("Could not parse git date '{:?}'", trimmed_git_date_str);
     }
+    println!("Could not parse git date '{:?}'", trimmed_git_date_str);
     None
 }
 
@@ -173,7 +173,7 @@ pub fn markdown_to_html(markdown: &str) -> String {
     let wrapper = MarkdownParser::new(basic_parser);
     let mut html_output = String::new();
     html::push_html(&mut html_output, wrapper);
-    return html_output;
+    html_output
 }
 
 /// Prepend a slash in front of a path, making it absolute.
@@ -215,7 +215,7 @@ pub fn remove_first_n_lines(input: &str, n: usize) -> String {
 }
 
 pub fn generate_tag_page_name(name: &str) -> PathBuf {
-    return PathBuf::from(format!("tag-{}.html", name));
+    PathBuf::from(format!("tag-{}.html", name))
 }
 
 pub fn format_tag_path(tag: &Tag) -> String {
@@ -229,15 +229,13 @@ pub fn format_tag_path(tag: &Tag) -> String {
             result.push('/');
         }
         result.push_str(&generate_tag_page_name(last).to_string_lossy());
-        return result;
+        result
     } else {
-        return tag.tag_path.clone();
+        tag.tag_path.clone()
     }
 }
 
-
-
-/// Parse dimensions, given in the form 
+/// Parse dimensions, given in the form
 /// - \d: width in pixels
 /// - \d\s?x\s?\d: width times height in pixels.
 ///
@@ -252,10 +250,12 @@ fn parse_dims_inner(alias: &str) -> Option<Dimensions> {
     if let Some(width) = dimensions_raw.get(0) {
         if let Some(w) = width.parse::<u32>().ok() {
             if let Some(h) = dimensions_raw.get(1) {
-                return Some( Dimensions { width: w, height: h.parse::<u32>().ok() } );
-            } else {
-                return Some( Dimensions::new(w) );
+                return Some(Dimensions {
+                    width: w,
+                    height: h.parse::<u32>().ok(),
+                });
             }
+            return Some(Dimensions::new(w));
         }
     }
     None

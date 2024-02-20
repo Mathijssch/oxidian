@@ -1,10 +1,8 @@
 //use super::errors::MathFindError;
 
 use std::cmp;
-
-use super::placeholder::Sanitization;
-
-use log::{debug, info};
+use crate::core::sanitization::Sanitization;
+use log::debug;
 
 
 enum MathState {
@@ -138,10 +136,7 @@ pub fn disambiguate_protected(content: &str) -> (String, Vec<Sanitization>) {
 mod tests { 
 
     use std::assert_eq;
-
-    use crate::oxidianlib::obs_placeholders::DelimPair;
-
-    use super::{generate_placeholders, Sanitization};
+    use super::{DelimPair, generate_placeholders, Sanitization};
 
     fn run_basic_test(query: &str, solution: Vec<&str>, open_delim: &str, close_delim: &str) {
         let sanitization: Vec<Sanitization> = solution

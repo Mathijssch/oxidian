@@ -1,5 +1,5 @@
-use super::obs_placeholders::{find_pair_ids, DelimPair};
-use super::html::HtmlTag;
+use crate::utils::placeholders::{find_pair_ids, DelimPair};
+use crate::core::html::HtmlTag;
 use log::debug;
 
 ///Replace highlights, given by ==<content>== by spans with the `hl` class.

@@ -1,5 +1,6 @@
-use super::filesys::{relative_to, slugify_path};
-use super::{note::Note, utils::prepend_slash};
+use crate::utils::filesys::{relative_to, slugify_path};
+use crate::components::note::Note;
+use crate::utils::utils::prepend_slash;
 use std::path::{Path, PathBuf};
 
 use serde_derive::{Deserialize, Serialize};

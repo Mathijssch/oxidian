@@ -1,13 +1,13 @@
 use log::debug;
-use super::formatting::link_to_html;
-use super::html;
-use super::utils;
-use super::link::Link;
-use super::filesys;
+use crate::utils::formatting::link_to_html;
+use crate::core::html;
+use crate::utils::utils;
+use crate::components::link::Link;
+use crate::utils::filesys;
 use std::fs::File;
 use std::io::Write;
 use std::collections::{BTreeMap, BTreeSet};
-use super::constants::TAG_DIR;
+use crate::utils::constants::TAG_DIR;
 use std::path::{PathBuf,Path};
 
 
@@ -86,6 +86,7 @@ impl Tree {
         self.children.is_empty()
     }
 
+    #[allow(dead_code)]
     pub fn add_link(&mut self, reference: Link) {
         self.contents.insert(reference);
     }
@@ -227,7 +228,7 @@ impl Tree {
             Self::flush_letter_list(&mut html_content, &mut li_notes_per_letter);
         }
 
-        return html_content;
+        html_content
     }
 
     ///Build the index of a given tree of tags (recursively). 

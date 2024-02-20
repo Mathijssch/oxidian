@@ -1,4 +1,12 @@
-pub mod oxidianlib;
+mod components; 
+mod preamble;
+mod obsidian;
+pub mod core;
+pub mod utils;
+
+pub mod exporting;
+
+
 
 extern crate yaml_rust;
 

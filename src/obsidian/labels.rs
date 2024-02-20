@@ -21,7 +21,7 @@ pub fn find_labels(content: &str) -> Vec<BlockLabel> {
             label: String::from(&capture["label"]),
             source: format!("{}{}", &capture["start"], &capture["label"])
         })
-        .map(|l| {debug!("Found label {}", l.label); return l})
+        .map(|l| {debug!("Found label {}", l.label); l})
         .collect::<Vec<BlockLabel>>()
 }
 

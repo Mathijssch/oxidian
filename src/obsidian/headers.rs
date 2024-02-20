@@ -22,9 +22,9 @@ lazy_static! {
 
 impl HeaderParser {
     pub fn new() -> Self {
-        return HeaderParser {
+        HeaderParser {
             state: HeaderState::Idle,
-        };
+        }
     }
 
     pub fn process_line(&mut self, line: &str) -> Option<String> {
@@ -51,11 +51,11 @@ impl HeaderParser {
                 self.state = HeaderState::Idle;
                 // If the preceding line is just a regular line, 
                 // add an empty line.
-                return Some(format!("\n{}", line));
+                Some(format!("\n{}", line))
             }, 
             _ => {
                 self.state = HeaderState::Idle;
-                return None;
+                None
             }
         }
     }

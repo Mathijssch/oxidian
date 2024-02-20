@@ -1,6 +1,6 @@
-use super::errors::{GetAgeError, FileWriteError};
+use super::errors::{GetAgeError, FileWriteError, NotePathError};
 use super::utils::prepend_slash;
-use super::{constants::NOTE_EXT, errors::NotePathError};
+use crate::utils::constants::NOTE_EXT;
 use log::{debug, error, info, warn};
 use slugify::slugify;
 use std::fs::File;
@@ -48,9 +48,8 @@ pub fn resolve_path<'a>(
         let stripped = path.strip_prefix("/").unwrap_or(path);
         if base_dir.join(stripped).exists() {
             return ResolvedPath::Unchanged;
-        } else {
-            return ResolvedPath::Broken;
         }
+        return ResolvedPath::Broken;
     }
 
     let full = relative_to.join(path);
@@ -148,7 +147,7 @@ pub fn relative_to_with_info<T: AsRef<Path>, U: AsRef<Path>>(
         .strip_prefix(relative_to.as_ref())
         .unwrap_or_else(|_| {
             has_prefix = false;
-            return path_ref;
+            path_ref
         });
     (internal_path.to_owned(), has_prefix)
 }
@@ -168,7 +167,7 @@ pub fn walk_ignoring<'a>(dir: &Path, ignoring: &'a Vec<PathBuf>) -> impl Iterato
         .into_iter()
         .filter_entry(|entry| {
             let result = !ignoring.iter().any(|ignore_dir| entry.path() == ignore_dir);
-            return result;
+            result
         })
         .filter_map(Result::ok)
 }

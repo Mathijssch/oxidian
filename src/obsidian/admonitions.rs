@@ -1,5 +1,5 @@
-use super::html::wrap_html_raw;
-use super::placeholder::Sanitization;
+use crate::core::html::wrap_html_raw;
+use crate::core::sanitization::Sanitization;
 use regex::Regex;
 
 lazy_static! {

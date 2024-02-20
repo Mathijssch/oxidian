@@ -4,12 +4,10 @@ extern crate pretty_env_logger;
 
 
 use clap::{Parser, Subcommand};
-use oxidian::oxidianlib::exporter;
-use oxidian::oxidianlib::{
-    constants::INDEX_FILE,
-    errors, //::{self, IndexError},
-    config
-};
+use oxidian::exporting::{config, exporter};
+use oxidian::utils::constants::INDEX_FILE;
+
+use oxidian::core::errors;
 
 use std::path::{Path, PathBuf};
 

@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 use clap::builder::OsStr;
-use super::{constants::NOTE_EXT, utils, filesys::relative_to};
-
+use crate::utils::{utils, constants::NOTE_EXT, filesys::relative_to};
 use regex::Regex;
+use super::errors;
 
 lazy_static! {
     static ref OBSIDIAN_NOTE_LINK_RE: Regex = Regex::new(
@@ -11,7 +11,7 @@ lazy_static! {
     .unwrap();
 }
 
-use super::{errors, note::Note, utils::prepend_slash};
+use super::note::Note;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dimensions {
@@ -72,15 +72,15 @@ fn attachment_type_from_file(file: &Path) -> FileType {
         return FileType::Misc;
     }
 
-    if super::constants::IMG_EXT.contains(&ext) {
+    if crate::utils::constants::IMG_EXT.contains(&ext) {
         return FileType::Image;
     }
 
-    if super::constants::VIDEO_EXT.contains(&ext) {
+    if crate::utils::constants::VIDEO_EXT.contains(&ext) {
         return FileType::Video;
     }
 
-    if super::constants::AUDIO_EXT.contains(&ext) {
+    if crate::utils::constants::AUDIO_EXT.contains(&ext) {
         return FileType::Audio;
     }
     // TODO: Try to find the extension in a more rigorous way.
@@ -105,7 +105,7 @@ impl Link {
             return LinkType::Internal;
         };
 
-        return LinkType::Note;
+        LinkType::Note
     }
 
     pub fn set_broken(&mut self, is_broken: bool) { self.broken = is_broken; }
@@ -115,7 +115,7 @@ impl Link {
     ///If the link is not in the given directory, then the target is not changed.
     pub fn set_relative(mut self, dir: &Path) -> Self { 
         let relative_path = relative_to(&self.target, dir);
-        self.target = prepend_slash(relative_path);
+        self.target = utils::prepend_slash(relative_path);
         self
     }
 
@@ -153,12 +153,12 @@ impl Link {
                     LinkType::Note =>
                     {
                         if let Some(filename) = self.target.with_extension("").file_name() {
-                            return filename.to_string_lossy().to_string();
+                            filename.to_string_lossy().to_string()
                         } else { 
-                            return self.target.with_extension("").to_string_lossy().to_string();
+                            self.target.with_extension("").to_string_lossy().to_string()
                         }
                     }
-                    _ => { return self.target.to_string_lossy().to_string() }
+                    _ => { self.target.to_string_lossy().to_string() }
                 }
             }
         }
@@ -203,7 +203,7 @@ impl Link {
                 return true;
             }
         } else { return true; } 
-        return false;
+        false
     }
 
     pub fn parse_dims(&self) -> Option<Dimensions> {

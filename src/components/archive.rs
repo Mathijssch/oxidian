@@ -4,18 +4,15 @@ use log::info;
 
 use chrono::Datelike;
 
-use super::link::Link;
+use crate::components::link::Link;
 use super::note::Note;
-use super::html::{self, HtmlTag};
-use super::utils;
-use super::constants::MONTHS;
+use crate::core::html::{self, HtmlTag};
+use crate::utils::utils;
+use crate::utils::constants::MONTHS;
 
 type Year = i32;
 type Month = u32;
 type Calendar<'a> = BTreeMap<Year, BTreeMap<Month, Vec<&'a Note<'a>>>>;
-
-
-
 
 
 ///Make a collapsible list with the given `header` and `collapsed` being the collapsible content. 

@@ -9,7 +9,7 @@ static ref MD_LINK_RE: Regex =
     Regex::new(r"(?P<is_attachment>!?)\[(?P<alias>[^\]]*?)\]\((?P<target>[^\)]*?)\)")
 .unwrap();
 }
-use super::link::Link;
+use crate::components::link::Link;
 
 pub fn find_markdown_links(content: &str) -> Vec<Link> {
     MD_LINK_RE.captures_iter(content)
@@ -29,7 +29,7 @@ pub fn find_obsidian_links(content: &str) -> Vec<Link> {
 
 #[cfg(test)]
 mod tests {
-    use crate::oxidianlib::link::{LinkType, Link, FileType};
+    use crate::components::link::{LinkType, Link, FileType};
 
     use super::find_obsidian_links;
 

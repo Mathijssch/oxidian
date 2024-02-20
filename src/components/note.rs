@@ -7,13 +7,18 @@ use chrono::NaiveDate;
 
 //use super::formatting::link_to_md;
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
-use super::link::{Link, LinkType};
-use super::placeholder::Sanitization;
-use super::obs_headers::HeaderParser;
-use super::obs_highlights::replace_obs_highlights;
-use super::utils::{markdown_to_html, read_file_to_str, self};
-use super::{filesys, html, obs_tags, obs_labels};
-use super::{formatting, obs_admonitions, obs_comments, obs_links, obs_placeholders};
+use crate::components::link::{Link, LinkType};
+use crate::core::sanitization::Sanitization;
+use crate::core::html;
+use crate::obsidian::{headers::HeaderParser,
+                highlights::replace_obs_highlights,
+                tags, labels, admonitions, comments, links,
+};
+use crate::utils::{
+    placeholders,
+    utils::{markdown_to_html, read_file_to_str, self},
+    filesys, formatting
+};
 use yaml_rust::Yaml;
 
 
@@ -22,7 +27,7 @@ use yaml_rust::Yaml;
 pub struct Note<'a> { pub path: PathBuf,
     pub links: Vec<Link>,
     pub frontmatter: Option<Yaml>,
-    pub tags: Vec<obs_tags::Tag>,
+    pub tags: Vec<tags::Tag>,
     pub content: String,
     placeholders: Vec<Sanitization>,
     pub title: String,
@@ -259,7 +264,7 @@ impl<'a> Note<'a> {
     fn replace_blockrefs_by_placeholders(
         content: String,
         placeholders: &mut Vec<Sanitization>,
-        labels: &Vec<obs_labels::BlockLabel>,
+        labels: &Vec<labels::BlockLabel>,
     ) -> String {
         let mut content = content;
         for label in labels {
@@ -275,17 +280,17 @@ impl<'a> Note<'a> {
         content: String, 
         placeholders: &mut Vec<Sanitization>
         ) -> String {
-        let mut admonitions = obs_admonitions::AdmonitionParser::new();
+        let mut admonitions = admonitions::AdmonitionParser::new();
         let mut output = String::with_capacity(content.len());
         for line in content.lines() {
             match admonitions.process_line(line) {
-                obs_admonitions::ParseOutput::Placeholder { replacement, placeholder } => {
+                admonitions::ParseOutput::Placeholder { replacement, placeholder } => {
                     output.push_str(&replacement);
                     if let Some(ph) = placeholder { 
                         placeholders.push(ph);
                     }
                 }, 
-                obs_admonitions::ParseOutput::None => {output.push_str(line)}
+                admonitions::ParseOutput::None => {output.push_str(line)}
             }
             output.push('\n');
         }
@@ -307,13 +312,13 @@ impl<'a> Note<'a> {
     }
     
     fn find_obsidian_links(ref_path: &Path, root_path: &Path, content: &str, search_links: bool, ignore: &Vec<PathBuf>) -> Vec<Link> {
-        let mut links = obs_links::find_obsidian_links(content);
+        let mut links = links::find_obsidian_links(content);
         Self::resolve_links(&mut links, ref_path, root_path, search_links, ignore);
         links
     }
 
     fn find_markdown_links(ref_path: &Path, root_path: &Path, content: &str, search_links: bool, ignore: &Vec<PathBuf>) -> Vec<Link> {
-        let mut links = obs_links::find_markdown_links(content);
+        let mut links = links::find_markdown_links(content);
         Self::resolve_links(&mut links, ref_path, root_path, search_links, ignore);
         links
     }
@@ -323,13 +328,13 @@ impl<'a> Note<'a> {
     ///
     /// ## Example
     /// `^124` -> `<span id="124"></span>`
-    fn find_blockref_labels(content: &str) -> Vec<obs_labels::BlockLabel> {
-        obs_labels::find_labels(content)
+    fn find_blockref_labels(content: &str) -> Vec<labels::BlockLabel> {
+        labels::find_labels(content)
     }
 
-    fn find_tags(content: &str) -> Vec<obs_tags::Tag> {
+    fn find_tags(content: &str) -> Vec<tags::Tag> {
         // TODO: Extract tags from the frontmatter
-        obs_tags::find_tags(content)
+        tags::find_tags(content)
     }
 
     ///Remove protected pieces of content, like math and code. 
@@ -339,7 +344,7 @@ impl<'a> Note<'a> {
     ///hash serving as a placeholder.
     fn remove_protected_elems(content: String) -> (String, Vec<Sanitization>) {
         // Remove math elements and code
-        obs_placeholders::disambiguate_protected(&content)
+        placeholders::disambiguate_protected(&content)
     }
 
     ///Get rid of the comments and/or other unwanted pieces of text.
@@ -420,7 +425,7 @@ impl<'a> Note<'a> {
 fn strip_comments(note: &str) -> String {
     let mut output = String::with_capacity(note.len());
     for line in note.lines() {
-        output.push_str(obs_comments::process_line(line));
+        output.push_str(comments::process_line(line));
         output.push('\n');
     }
     output

@@ -7,13 +7,13 @@ pub fn wrap_html_raw<T: AsRef<str>, U: AsRef<str>, V: AsRef<str>>(
     tag: U,
     options: V,
 ) -> String {
-    return format!(
+    format!(
         "<{} {}>{}</{}>",
         tag.as_ref(),
         options.as_ref(),
         content.as_ref(),
         tag.as_ref()
-    );
+    )
 }
 
 #[allow(dead_code)]

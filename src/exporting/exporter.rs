@@ -1,21 +1,21 @@
-use crate::oxidianlib::filesys::copy_directory;
-use crate::oxidianlib::load_static::{
+use crate::utils::filesys::copy_directory;
+use super::load_static::{
     BUTTON_CSS, DARKMODE_SCRIPT, HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG, LOAD_KATEX,
     LOAD_MATHJAX, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_HTML, SEARCH_SCRIPT, STOPWORDS, FOUC_SCRIPT,
 };
-use crate::oxidianlib::utils::move_to;
+use crate::utils::utils;
 use log::{debug, info, warn};
 use serde_json;
 
-use super::config::{ExportConfig, MathEngine};
-use super::constants::TAG_DIR;
-use super::filesys::{self, get_all_notes_exclude, slugify_path, write_to_file};
-use super::link::Link;
+use crate::exporting::config::{ExportConfig, MathEngine};
+use crate::utils::constants::TAG_DIR;
+use crate::utils::filesys::{self, get_all_notes_exclude, slugify_path, write_to_file};
+use crate::components::link::Link;
 use super::load_static::{ADMONITIONS_CSS, BROKEN_LINKS};
-use super::preamble::formatter::FormatPreamble;
+use crate::preamble::formatter::FormatPreamble;
 use super::search::SearchEntry;
-use super::tag_tree::Tree;
-use super::{archive, errors, note, utils};
+use crate::components::tag_tree::Tree;
+use crate::components::{archive, note};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -556,11 +556,11 @@ impl<'a> Exporter<'a> {
         &self,
         path: &'p Path,
         extension: Option<&str>,
-    ) -> Result<PathBuf, super::errors::NotePathError<&'p Path>> {
+    ) -> Result<PathBuf, crate::utils::errors::NotePathError<&'p Path>> {
         let (internal_path, has_prefix) =
-            super::filesys::relative_to_with_info(&path, &self.input_dir);
+            crate::utils::filesys::relative_to_with_info(&path, &self.input_dir);
         let slugged = slugify_path(&internal_path, extension)
-            .map_err(|_| super::errors::NotePathError::NoStem(path))?;
+            .map_err(|_| crate::utils::errors::NotePathError::NoStem(path))?;
         if has_prefix {
             Ok(self.input_dir.join(&slugged))
         } else {
@@ -574,7 +574,7 @@ impl<'a> Exporter<'a> {
             return false;
         }
         // Otherwise, check if has not been changed. If that check fails, just don't skip it.
-        super::filesys::is_older(source_path, dst_path).unwrap_or(false)
+        crate::utils::filesys::is_older(source_path, dst_path).unwrap_or(false)
     }
 
     /// Check if copying the target of the given link should be skipped.
@@ -585,7 +585,7 @@ impl<'a> Exporter<'a> {
         }
         // Otherwise, check if has not been changed. If that check fails, just don't skip it.
         let (input_path, output_path) = self.get_paths_of_linked_attach(link);
-        super::filesys::is_older(&input_path, &output_path).unwrap_or(false)
+        crate::utils::filesys::is_older(&input_path, &output_path).unwrap_or(false)
     }
 
     fn compile_note<'b>(&mut self, new_note: &mut note::Note<'b>, backlinks: &'b Backlinks) {
@@ -617,7 +617,7 @@ impl<'a> Exporter<'a> {
     }
 
     ///Generate some javascript to load the math rendering engine.
-    fn generate_math_config_script(&self) -> Result<(), errors::PreambleError> {
+    fn generate_math_config_script(&self) -> Result<(), super::errors::PreambleError> {
         let mut preamble_html = "".to_string();
         if let Some(preamble_path) = &self.cfg.math.preamble_path {
             info!("Converting preamble {}", preamble_path.to_string_lossy());
@@ -644,7 +644,7 @@ impl<'a> Exporter<'a> {
         let output_path = self
             .slugify_path(&path, extension)
             .expect("Could not slugify path.");
-        move_to(&output_path, &self.input_dir, &self.output_dir)
+        utils::move_to(&output_path, &self.input_dir, &self.output_dir)
             .unwrap_or_else(|_| self.output_dir.join(&output_path))
     }
 
