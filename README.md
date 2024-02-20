@@ -25,13 +25,13 @@
 - [ ] [performance]: Search the location of a file by first copying the file tree to memory. This will save many syscalls.
 - [ ] [performance]: Use [AhoCorasick](https://docs.rs/aho-corasick/latest/aho_corasick/struct.AhoCorasick.html) crate for multiple replacements in a string. 
 - [x] Automatically refer to the tag index page, when a tag is detected.
-- [ ] Test if checklists are correctly handled.
-- [ ] Implement decent styling and frontend functionality in default template.
+- [x] Test if checklists are correctly handled.
+- [x] Implement decent styling and frontend functionality in default template.
     - [x] Mathjax / KaTeX support 
         - [x] Convert .sty preamble to mathjax config
     - [x] Navbar styling
     - [x] Avoid FOUC
-- [ ] Add the counts to the tags in the tree
+    - [x] Add the counts to the tags in the tree
 
 ## Filenames for tags {#tags}
 

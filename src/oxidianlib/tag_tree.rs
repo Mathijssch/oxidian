@@ -89,6 +89,14 @@ impl Tree {
     pub fn add_link(&mut self, reference: Link) {
         self.contents.insert(reference);
     }
+
+    pub fn get_count_recursive(&self) -> usize {
+        let mut result = self.contents.len();
+        for subtree in self.children.values() {
+            result += subtree.get_count_recursive();
+        }
+        result
+    }
     
     /// Get all the items in this tree recursively (including the items in the subtrees) 
     /// TODO - Figure out how to do this with iterators.
@@ -141,7 +149,12 @@ impl Tree {
             let curr_page_filename = utils::generate_tag_page_name(&self.name);
             let curr_page_path = base_path.join(curr_page_filename);
             child_basepath.push(&self.name);
-            ego_entry = html::link(utils::prepend_slash(&curr_page_path).as_path(), &self.name, "");
+            ego_entry = html::link(utils::prepend_slash(&curr_page_path).as_path(), 
+                &self.name, "") + 
+                &html::HtmlTag::span()
+                     .with_class("tag-count")
+                     .with_attr("style", "float: right")
+                     .wrap(self.get_count_recursive());
         }
 
         if !self.is_leaf() {
