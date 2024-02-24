@@ -93,26 +93,26 @@ pub fn generate_archive_page_html<'a>(
         let date_created = note.get_creation_date()
             .expect(&format!("Couldn't get creation date of note {}", note.title)); 
 
-        calendar.entry(date_created.year())
-            .or_insert_with(BTreeMap::new)
-            .entry(date_created.month0())
-            .or_insert_with(Vec::new)
-            .push(note);
+        calendar.entry(date_created.year())  // Get the months at the given year
+            .or_insert_with(BTreeMap::new)   // If no entries at this year, make a new hashmap
+            .entry(date_created.month0())    // Get the list of notes at the current note's month
+            .or_insert_with(Vec::new)        // If there are none yet, then initialize a new vector 
+            .push(note);                     // Add the current note to the vector
     }
 
 
     for year in calendar.keys().rev() {
         let mut nb_notes_per_year = 0;
-        let months = calendar.get(year).unwrap();
-        let html_months = months.keys()
+        let months = calendar.get(year).expect(&format!("Calendar doesn't contain key {} (this should be impossible!)", year));
+        let html_months = months.keys().rev()  // Reverse: most recent on top.
                             .map(|mth| {
                                 let mut notes = months.get(mth).unwrap().clone();
                                 nb_notes_per_year += notes.len();
                                 HtmlTag::li().wrap(
                                     build_month(
                                         &MONTHS.get(usize::try_from(*mth)
-                                                            .expect(&format!("Could not convert the month number {} to a usize.", mth)))
-                                                            .expect(&format!("Could not get the name of the {}th month!", mth)),
+                                                .expect(&format!("Could not convert the month number {} to a usize.", mth)))
+                                                .expect(&format!("Could not get the name of the {}th month!", mth)),
                                         &mut notes, input_dir, tag_dir)
                                 )
                             }).collect::<Vec<String>>()
