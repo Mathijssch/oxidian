@@ -412,6 +412,7 @@ impl<'a> Note<'a> {
                          .wrap(html::ul(backlinks.iter(), "class=\"backlinks\""))
         };
 
+        debug!("Writing note to {}", path.to_string_lossy());
         write!(writer, "{}",
             template_content.replace(r"{{content}}", &html_content)
                             .replace(r"{{title}}", &self.title)

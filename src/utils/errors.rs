@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, io};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -21,4 +21,13 @@ pub enum NotePathError<T: fmt::Debug> {
     NoStem(T),
     #[error("The given path to a Note {0:?} cannot be represented as valid UTF-8!")]
     InvalidUTF8(T),
+}
+
+
+#[derive(Error, Debug)]
+pub enum PathInputToOutputError {
+    #[error(transparent)]
+    StripPrefixError(#[from] std::path::StripPrefixError),
+    #[error(transparent)]
+    Canonicalize(#[from] io::Error),
 }

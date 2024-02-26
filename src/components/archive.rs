@@ -61,8 +61,9 @@ fn render_note_entry(note: &Note, input_dir: &Path, tag_dir: &Path) -> String {
 
 
 fn build_month<'a>( name: &str, notes: &mut Vec<&'a Note<'a>>, input_dir: &Path, tag_dir: &Path) -> String {
-    notes.sort_unstable_by_key(
-        |n| n.get_creation_date()
+    notes.sort_unstable_by_key( // Unstable: equal elements may be reordered. We don't really care
+                                // about this.
+        |n| {n.get_creation_date()}
     );
 
     let links = notes.iter().rev()

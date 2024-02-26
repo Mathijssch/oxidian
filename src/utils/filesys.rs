@@ -136,7 +136,7 @@ pub fn get_all_notes(path: &Path) -> impl Iterator<Item = io::Result<PathBuf>> {
 ///If `relative_to` is not a prefix of `path`, then a copy of `path` is returned.
 ///
 ///This function also returns whether this was the case or not.
-///This could be useful to determine whether the extracted piece has the be joined to `relative_to` again later.
+///This could be useful to determine whether the extracted piece has to be joined to `relative_to` again later.
 pub fn relative_to_with_info<T: AsRef<Path>, U: AsRef<Path>>(
     path: T,
     relative_to: U,
@@ -155,9 +155,9 @@ pub fn relative_to_with_info<T: AsRef<Path>, U: AsRef<Path>>(
 ///Return the given path `path`, but expressed relative to path `relative_to`.
 ///If `relative_to` is not a prefix of `path`, then a copy of `path` is returned.
 pub fn relative_to<T: AsRef<Path>, U: AsRef<Path>>(path: T, relative_to: U) -> PathBuf {
-    let path_ref = path.as_ref();
-    path_ref
-        .strip_prefix(relative_to.as_ref())
+    let path_ref = &path.as_ref();
+    path_ref.canonicalize().unwrap_or_else(|_| path_ref.to_path_buf())
+        .strip_prefix(&relative_to.as_ref().canonicalize().unwrap())
         .unwrap_or_else(|_| path_ref)
         .to_owned()
 }
@@ -170,6 +170,33 @@ pub fn walk_ignoring<'a>(dir: &Path, ignoring: &'a Vec<PathBuf>) -> impl Iterato
             result
         })
         .filter_map(Result::ok)
+}
+
+pub fn move_file<F: AsRef<Path>, T: AsRef<Path>>(from: F, to: T) 
+-> Result<(), io::Error> {
+    std::fs::rename(from, to)
+}
+
+pub fn remove_file(path: &Path) 
+-> Result<(), io::Error> {
+    std::fs::remove_file(path)
+}
+
+pub fn is_note<'a>(path: &Path, ignored: &[PathBuf]) -> bool {
+    if ignored.iter().any(|ignoredir| path.starts_with(ignoredir)) {
+        return false;
+    }
+    let extension = match path.extension() {
+        Some(extension) => {
+            let ext_str = extension.to_str(); 
+            match ext_str {
+                Some(ext_str) => ext_str, 
+                None => {return false;}
+            }
+        },
+        None => {return false;}
+    }.to_lowercase();
+    NOTE_EXT.iter().any(|ext| **ext == extension)
 }
 
 pub fn get_all_notes_exclude<'a>(

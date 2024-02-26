@@ -10,6 +10,7 @@ pub struct ExportConfig {
     // Attachment directory relative to the notebook directory.
     pub attachment_dir: Option<PathBuf>,
     pub template_dir: Option<PathBuf>,
+    pub ignored: Vec<PathBuf>,
     pub static_dir: Option<PathBuf>,
     pub generate_nav: bool,
     pub generate_tag_index: bool,
@@ -139,6 +140,7 @@ impl Default for ExportConfig {
             generate_nav: true,
             generate_tag_index: true,
             generate_archive: true,
+            ignored: vec![],
             creation_date: CreationDateConfig::default(),
             performance: PerformanceConfig::default(),
             search: SearchConfig::default(),

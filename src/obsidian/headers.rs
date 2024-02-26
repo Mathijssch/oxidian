@@ -45,7 +45,7 @@ impl HeaderParser {
         // We are at a header. 
         // This is equivalent to being in the beginning of a file, so set back to idle.
         // Add an empty line if necessary.
-        debug!("Found header {}", line);
+        //debug!("Found header {}", line);
         match self.state {
             HeaderState::PrecedingRegLine => {
                 self.state = HeaderState::Idle;

@@ -1,7 +1,9 @@
-use crate::utils::filesys::copy_directory;
+use crate::utils::filesys::{copy_directory, relative_to};
 use super::load_static::{
-    BUTTON_CSS, DARKMODE_SCRIPT, HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG, LOAD_KATEX,
-    LOAD_MATHJAX, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_HTML, SEARCH_SCRIPT, STOPWORDS, FOUC_SCRIPT,
+    BUTTON_CSS, DARKMODE_SCRIPT,
+    HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG, LOAD_KATEX,
+    LOAD_MATHJAX, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, 
+    SEARCH_HTML, SEARCH_SCRIPT, STOPWORDS, FOUC_SCRIPT,
 };
 use crate::utils::utils;
 use log::{debug, info, warn};
@@ -20,7 +22,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-type Backlinks = HashMap<PathBuf, HashSet<Link>>;
+pub type Backlinks = HashMap<PathBuf, HashSet<Link>>;
 
 #[derive(Debug)]
 pub struct ExportStats {
@@ -63,6 +65,7 @@ Total Build Time: {time:?}
     }
 }
 
+
 pub struct Exporter<'a> {
     input_dir: &'a Path,
     output_dir: &'a Path,
@@ -85,28 +88,6 @@ fn get_all_notes<'b>(
     all_notes.collect()
 }
 
-//fn iter_notes<'a, 'b>(
-//    input_dir: &Path,
-//    ignore: &'a Vec<PathBuf>,
-//) -> impl Iterator<Item = note::Note<'b>> + 'a {
-//    let all_paths = get_all_notes_exclude(&input_dir, ignore);
-//    let all_notes = all_paths.filter_map(|note_path| {
-//        note_path.map_or(None, |path| Some(note::Note::new(path, &input_dir).unwrap()))
-//    });
-//    return all_notes;
-//}
-
-//fn iter_notes_raw<'a, 'b>(
-//    input_dir: &Path,
-//    ignore: &'a Vec<PathBuf>,
-//) -> impl Iterator<Item = note::Note<'b>> + 'a {
-//    let all_paths = get_all_notes_exclude(&input_dir, ignore);
-//    let all_notes = all_paths.filter_map(|note_path| {
-//        note_path.map_or(None, |path| Some(note::Note::new_raw(path, &input_dir).unwrap()))
-//    });
-//    return all_notes;
-//}
-
 impl<'a> Exporter<'a> {
     pub fn new(input_dir: &'a Path, output_dir: &'a Path, cfg: &'a ExportConfig) -> Self {
         let stats = ExportStats::new();
@@ -118,6 +99,14 @@ impl<'a> Exporter<'a> {
             stats,
             note_template,
         }
+    }
+
+    pub fn input_directory(&self) -> &Path {
+        &self.input_dir
+    }
+    
+    pub fn config(&self) -> &ExportConfig {
+        &self.cfg
     }
 
     fn update_backlinks(&self, backlinks: &mut Backlinks, note: &note::Note) {
@@ -137,42 +126,22 @@ impl<'a> Exporter<'a> {
         backlinks
     }
 
-    //#[allow(dead_code)]
-    //fn generate_backlinks(&self) -> Backlinks {
-    //    let mut backlinks: Backlinks = HashMap::new();
-    //    let ignore = Self::get_excluded(&self.input_dir, &self.cfg);
-    //    let mut notes_count = 0;
-    //    for note in iter_notes_raw(&self.input_dir, &ignore) {
-    //        self.update_backlinks(&mut backlinks, &note);
-    //        notes_count += 1;
-    //    }
-    //    debug!("Collected backlinks in {} notes", notes_count);
-    //    return backlinks;
-    //}
-
-    fn get_excluded(input_dir: &Path, cfg: &ExportConfig) -> Vec<PathBuf> {
+    pub fn get_excluded(&self) -> Vec<PathBuf> {
         let mut result = vec![];
-        if let Some(dir) = &cfg.attachment_dir {
-            result.push(input_dir.join(dir));
+        if let Some(dir) = &self.cfg.attachment_dir {
+            result.push(self.input_dir.join(dir));
         };
-        if let Some(dir) = &cfg.static_dir {
-            result.push(input_dir.join(dir));
+        if let Some(dir) = &self.cfg.static_dir {
+            result.push(self.input_dir.join(dir));
         };
-        if let Some(dir) = &cfg.template_dir {
-            result.push(input_dir.join(dir));
+        if let Some(dir) = &self.cfg.template_dir {
+            result.push(self.input_dir.join(dir));
         };
+        for dir in &self.cfg.ignored {
+            result.push(self.input_dir.join(dir))
+        }
         result
     }
-
-    //#[allow(dead_code)]
-    //fn compile_notes(&mut self, backlinks: &Backlinks) {
-    //    let ignored = Self::get_excluded(&self.input_dir, &self.cfg);
-    //    debug!("Ignoring the following directories:\n{:?}", ignored);
-    //    let iter_notes = iter_notes(&self.input_dir, &ignored);
-    //    for mut note in iter_notes {
-    //        self.compile_note(&mut note, &backlinks)
-    //    }
-    //}
 
     fn compile_notes_from_vec<'b>(
         &mut self,
@@ -274,7 +243,34 @@ impl<'a> Exporter<'a> {
         self.output_dir.join("archive.html")
     }
 
-    pub fn export(&mut self) {
+    fn setup_template(&mut self) {
+        info!("Loading template ...");
+        let mut subtime = Instant::now();
+        if let Some(template_from_file) = self.load_template() {
+            self.note_template = template_from_file;
+        };
+        info!("Loaded template in {:?}", Instant::now() - subtime);
+
+        // Add math support
+        if self.cfg.math.enable {
+            subtime = Instant::now();
+            info!("Constructing math configuration script");
+            self.generate_math_config_script()
+                .expect("Failed to create the math configuration script.");
+            info!("Converted preamble in {:?}", Instant::now() - subtime);
+        }
+        self.set_math_loading_snip();
+
+        if self.cfg.search.enable {
+            subtime = Instant::now();
+            info!("Converted preamble in {:?}", Instant::now() - subtime);
+        }
+
+        self.set_search_loading_snip();
+        self.set_search_component();
+    }
+
+    pub fn export(&mut self) -> Backlinks {
         let start = Instant::now();
         debug!(
             "Start export with configuration\n{}\n{:?}\n{}",
@@ -287,7 +283,8 @@ impl<'a> Exporter<'a> {
         // ----------------
         info!("Listing all the notes in {:?}", self.input_dir);
         let mut subtime = Instant::now();
-        let ignored = Self::get_excluded(self.input_dir, self.cfg);
+        //let ignored = Self::get_excluded(self.input_dir, self.cfg);
+        let ignored = self.get_excluded();
         debug!("Ignoring the following directories:\n{:?}", ignored);
         //let mut iter_notes: Vec<note::Note> = iter_notes(&self.input_dir, &ignored).collect();
         let mut all_notes = get_all_notes(
@@ -315,31 +312,7 @@ impl<'a> Exporter<'a> {
 
         // Load the template
         // -----------------
-        info!("Loading template ...");
-        subtime = Instant::now();
-        if let Some(template_from_file) = self.load_template() {
-            self.note_template = template_from_file;
-        };
-        info!("Loaded template in {:?}", Instant::now() - subtime);
-
-        // Add math support
-
-        if self.cfg.math.enable {
-            subtime = Instant::now();
-            info!("Constructing math configuration script");
-            self.generate_math_config_script()
-                .expect("Failed to create the math configuration script.");
-            info!("Converted preamble in {:?}", Instant::now() - subtime);
-        }
-        self.set_math_loading_snip();
-
-        if self.cfg.search.enable {
-            subtime = Instant::now();
-            info!("Converted preamble in {:?}", Instant::now() - subtime);
-        }
-
-        self.set_search_loading_snip();
-        self.set_search_component();
+        self.setup_template();
 
         // Generate a tree of tags used in the notes
         // -----------------------------------------
@@ -382,6 +355,7 @@ impl<'a> Exporter<'a> {
 
         // ALL DONE  ----------------------------------
         self.stats.build_time = start.elapsed();
+        backlinks
     }
 
     fn create_search_index(&self, notes: &[note::Note]) {
@@ -588,7 +562,7 @@ impl<'a> Exporter<'a> {
         crate::utils::filesys::is_older(&input_path, &output_path).unwrap_or(false)
     }
 
-    fn compile_note<'b>(&mut self, new_note: &mut note::Note<'b>, backlinks: &'b Backlinks) {
+    pub fn compile_note<'b>(&mut self, new_note: &mut note::Note<'b>, backlinks: &'b Backlinks) {
         self.stats.note_count += 1;
 
         let output_path = self.input_to_output(&new_note.path, Some("html"));
@@ -640,10 +614,17 @@ impl<'a> Exporter<'a> {
 
     ///Translate a given path from the input directory to output directory.
     ///Besides replacing the base directory, also slugify the path.
-    fn input_to_output(&self, path: &Path, extension: Option<&str>) -> PathBuf {
-        let output_path = self
-            .slugify_path(&path, extension)
-            .expect("Could not slugify path.");
+    pub fn input_to_output(&self, path: &Path, extension: Option<&str>) -> PathBuf {
+        debug!("Before slug: {}", path.to_string_lossy());
+        debug!("input dir: {}", self.input_dir.to_string_lossy());
+
+        let output_path = self.input_dir.join(self
+            .slugify_path(
+                &relative_to(&path, &self.input_dir), 
+            extension)
+            .expect("Could not slugify path.")
+        );
+        debug!("After slug: {}", output_path.to_string_lossy());
         utils::move_to(&output_path, &self.input_dir, &self.output_dir)
             .unwrap_or_else(|_| self.output_dir.join(&output_path))
     }

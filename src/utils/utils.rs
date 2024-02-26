@@ -21,7 +21,9 @@ use figment::{
     Figment,
 };
 
-use log::info;
+use log::{info, debug};
+
+use super::errors::PathInputToOutputError;
 
 /// Return the contents of a file at path `path` as a String.
 pub fn read_file_to_str<T: AsRef<Path>>(path: T) -> Result<String, std::io::Error> {
@@ -74,7 +76,7 @@ pub fn render_full_tag_link(tag: &str, tag_dir: &Path) -> String {
         if let Some(parent_comp) = components.peek() {
             path.push(parent_comp);
         }
-        tag_name = component.clone();
+        tag_name = component;
         path.push(generate_tag_page_name(&component));
     }
     HtmlTag::a(path.to_str().unwrap()).wrap(&capitalize_first(tag_name))
@@ -153,7 +155,11 @@ pub fn move_to(
     path: &Path,
     original: &Path,
     new_ref: &Path,
-) -> Result<PathBuf, std::path::StripPrefixError> {
+) -> Result<PathBuf, PathInputToOutputError> {
+    //let path = path.canonicalize()?;
+    //let original = original.canonicalize()?;
+    //debug!("path: `{}`. Original input: `{}`", path.to_string_lossy(),
+    //    original.to_string_lossy());
     let relative_path = path.strip_prefix(original)?;
     Ok(new_ref.join(relative_path))
 }
