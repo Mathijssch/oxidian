@@ -3,7 +3,7 @@
 /// we have to add this leading empty line whenever it's missing.
 use regex::Regex;
 
-use log::debug;
+
 
 pub struct HeaderParser {
     state: HeaderState,

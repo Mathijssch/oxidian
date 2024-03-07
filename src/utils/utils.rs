@@ -21,7 +21,7 @@ use figment::{
     Figment,
 };
 
-use log::{info, debug};
+use log::{info};
 
 use super::errors::PathInputToOutputError;
 

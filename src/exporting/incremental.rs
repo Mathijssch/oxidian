@@ -4,7 +4,7 @@ use crate::utils::filesys;
 use super::exporter::{Backlinks, Exporter};
 use crate::components::note::Note;
 use notify::{
-    event::{DataChange, ModifyKind, RemoveKind, RenameMode},
+    event::{ModifyKind, RemoveKind, RenameMode},
     Event, EventKind,
 };
 
