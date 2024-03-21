@@ -408,8 +408,8 @@ impl<'a> Note<'a> {
         
         let backlink_replacement = match backlinks.is_empty() {
             true => "".to_string(),
-            false => html::HtmlTag::div().with_attr("style", "border: solid 1px; border-radius: 5px;")
-                         .wrap(html::ul(backlinks.iter(), "class=\"backlinks\""))
+            false => html::HtmlTag::div().with_class("backlinks")
+                         .wrap(html::ul(backlinks.iter(), ""))
         };
 
         debug!("Writing note to {}", path.to_string_lossy());

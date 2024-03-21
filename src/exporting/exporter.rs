@@ -12,7 +12,7 @@ use serde_json;
 use crate::exporting::config::{ExportConfig, MathEngine};
 use crate::utils::constants::TAG_DIR;
 use crate::utils::filesys::{self, get_all_notes_exclude, slugify_path, write_to_file};
-use crate::components::link::Link;
+use crate::components::link::{Link, LinkType};
 use super::load_static::{ADMONITIONS_CSS, BROKEN_LINKS};
 use crate::preamble::formatter::FormatPreamble;
 use super::search::SearchEntry;
@@ -110,11 +110,17 @@ impl<'a> Exporter<'a> {
     }
 
     fn update_backlinks(&self, backlinks: &mut Backlinks, note: &note::Note) {
-        for link in &note.links {
-            backlinks
-                .entry(self.input_dir.join(&link.target).with_extension("md"))
-                .or_insert_with(HashSet::new)
-                .insert(Link::from_note(&note).set_relative(self.input_dir));
+        for link in note.links
+                        .iter()
+                        .filter(
+                            |link| link.link_type() == LinkType::Note && 
+                                    !link.broken
+                        )
+                        {
+                backlinks
+                    .entry(link.target.with_extension("md"))
+                    .or_insert_with(HashSet::new)
+                    .insert(Link::from_note(&note).set_relative(self.input_dir));
         }
     }
 
@@ -515,7 +521,10 @@ impl<'a> Exporter<'a> {
         new_note: &mut note::Note<'b>,
         backlinks: &'b Backlinks,
     ) {
-        if let Some(refering_notes) = backlinks.get(&new_note.path) {
+        //TODO factor out the transformation of the note path.
+        if let Some(refering_notes) = backlinks.get(
+                    &utils::prepend_slash(relative_to(&new_note.path, &self.input_dir))
+                ) {
             refering_notes
                 .iter()
                 .for_each(|refering_note| new_note.add_backlink(&refering_note))

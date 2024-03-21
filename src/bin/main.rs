@@ -1,6 +1,8 @@
 extern crate oxidian;
+use std::process;
 extern crate pretty_env_logger;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 use clap::{Parser, Subcommand};
 use oxidian::exporting::{config, exporter};
@@ -43,12 +45,12 @@ enum Commands {
         /// Path to the index file
         #[arg(short, long)]
         index: Option<PathBuf>,
-        
+
         /// Path to the config file. Uses `[dir]/config.toml` by default.
         #[arg(short, long)]
         cfg: Option<PathBuf>,
     },
-    #[command(arg_required_else_help=true)]
+    #[command(arg_required_else_help = true)]
     Watch {
         /// The directory containing the notes
         dir: PathBuf,
@@ -56,14 +58,14 @@ enum Commands {
         /// The output directory
         #[arg(short, long)]
         out: Option<PathBuf>,
-            
+
         /// Path to the index file
         #[arg(short, long)]
         index: Option<PathBuf>,
-        
+
         /// Path to the config file. Uses `[dir]/config.toml` by default.
         #[arg(short, long)]
-        cfg: Option<PathBuf>
+        cfg: Option<PathBuf>,
     },
 
     /// Launches a server
@@ -87,16 +89,16 @@ fn main() {
         Commands::Build {
             dir,
             out,
-            index, 
-            cfg
+            index,
+            cfg,
         } => {
             trace!("Running build command.");
             let index = index.unwrap_or(PathBuf::from(INDEX_FILE));
             debug!("index file: {:?}", index);
             let out = out.unwrap_or_else(|| {
                 let mut out = dir.clone();
-                if let Some(main_dir) = out.file_name() { 
-                    let mut filename = main_dir.to_owned(); 
+                if let Some(main_dir) = out.file_name() {
+                    let mut filename = main_dir.to_owned();
                     filename.push(std::ffi::OsString::from("_out"));
                     out.set_file_name(filename);
                 } else {
@@ -111,16 +113,16 @@ fn main() {
         Commands::Watch {
             dir,
             out,
-            index, 
-            cfg
+            index,
+            cfg,
         } => {
             trace!("Running watch command.");
             let index = index.unwrap_or(PathBuf::from(INDEX_FILE));
             debug!("index file: {:?}", index);
             let out = out.unwrap_or_else(|| {
                 let mut out = dir.clone();
-                if let Some(main_dir) = out.file_name() { 
-                    let mut filename = main_dir.to_owned(); 
+                if let Some(main_dir) = out.file_name() {
+                    let mut filename = main_dir.to_owned();
                     filename.push(std::ffi::OsString::from("_out"));
                     out.set_file_name(filename);
                 } else {
@@ -142,20 +144,19 @@ fn build_vault(
     input_dir: PathBuf,
     output_dir: PathBuf,
     index_file: PathBuf,
-    config_file: Option<PathBuf>
+    config_file: Option<PathBuf>,
 ) {
     // Prepare
     // --------------------
     if let Err(e) = validate_build_args(&input_dir, &output_dir, &index_file) {
-        log::warn!("{}", e);
+        log::error!("Error: {}", e);
+        process::exit(1);
     };
 
     let default_config_path = input_dir.join("config.toml");
-    let config_file = config_file
-        .unwrap_or(default_config_path); 
+    let config_file = config_file.unwrap_or(default_config_path);
 
-    let export_config = config::ExportConfig::from_file(config_file)
-        .unwrap_or_default();
+    let export_config = config::ExportConfig::from_file(config_file).unwrap_or_default();
 
     let mut builder = exporter::Exporter::new(&input_dir, &output_dir, &export_config);
 
@@ -171,7 +172,7 @@ fn watch(
     input_dir: PathBuf,
     output_dir: PathBuf,
     index_file: PathBuf,
-    config_file: Option<PathBuf>
+    config_file: Option<PathBuf>,
 ) {
     use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
     let (tx, rx) = std::sync::mpsc::channel();
@@ -179,24 +180,27 @@ fn watch(
     // Prepare
     // --------------------
     if let Err(e) = validate_build_args(&input_dir, &output_dir, &index_file) {
-        log::warn!("{}", e);
+        log::error!("Error: {}", e);
+        process::exit(1);
+        //log::warn!("{}", e);
     };
 
     let default_config_path = input_dir.join("config.toml");
-    let config_file = config_file
-        .unwrap_or(default_config_path); 
+    let config_file = config_file.unwrap_or(default_config_path);
 
-    let export_config = config::ExportConfig::from_file(config_file)
-        .unwrap_or_default();
+    let export_config = config::ExportConfig::from_file(config_file).unwrap_or_default();
 
-    let mut builder = exporter::Exporter::new(input_dir.as_ref(), 
-        output_dir.as_ref(), &export_config);
+    let mut builder =
+        exporter::Exporter::new(input_dir.as_ref(), output_dir.as_ref(), &export_config);
 
     //todo store cache files to allow a true incremental build.
     info!("Running initial build.");
     let mut backlinks = builder.export();
     let line = "-".repeat(70);
-    info!("Initial build finished.\n\n{}{}{}\n", line, builder.stats, line);
+    info!(
+        "Initial build finished.\n\n{}{}{}\n",
+        line, builder.stats, line
+    );
     info!("Watching for file changes.");
 
     // Automatically select the best implementation for your platform.
@@ -217,13 +221,13 @@ fn watch(
 
 fn validate_build_args<'a>(
     input_dir: &'a Path,
-    output_dir: &'a Path,
+    _output_dir: &'a Path,
     index_file: &'a Path,
 ) -> Result<(), InitializeError<'a>> {
     check_exists(input_dir)
         .map_err(|e| errors::InitializationError::<&Path>::MissingDirectory(e))?;
-    check_output_available(output_dir)
-        .map_err(|e| errors::InitializationError::<&Path>::OutputDirExists(e))?;
+    //check_output_available(output_dir)
+    //    .map_err(|e| errors::InitializationError::<&Path>::OutputDirExists(e))?;
     check_contains_index(&input_dir, &index_file)?;
     Ok(())
 }
@@ -245,7 +249,7 @@ fn check_contains_index<'a>(
     Ok(())
 }
 
-fn check_output_available(output_path: &Path) -> Result<(), ExistingOutput> {
+fn _check_output_available(output_path: &Path) -> Result<(), ExistingOutput> {
     if output_path.exists() {
         return Err(errors::DirExistsError(output_path));
     }
