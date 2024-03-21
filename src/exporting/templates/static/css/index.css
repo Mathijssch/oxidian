@@ -1040,3 +1040,8 @@ details ul {
     font-size: smaller;
     color: var(--tag-text);
 }
+
+/* Workaround for Pulldown cmark issue: https://github.com/pulldown-cmark/pulldown-cmark/issues/464 */
+.footnote-definition>p{ 
+    display: inline;
+}
