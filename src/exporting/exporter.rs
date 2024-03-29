@@ -1,23 +1,22 @@
-use crate::utils::filesys::{copy_directory, relative_to};
 use super::load_static::{
-    BUTTON_CSS, DARKMODE_SCRIPT,
-    HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG, LOAD_KATEX,
-    LOAD_MATHJAX, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, 
-    SEARCH_HTML, SEARCH_SCRIPT, STOPWORDS, FOUC_SCRIPT,
+    BUTTON_CSS, DARKMODE_SCRIPT, FOUC_SCRIPT, HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG,
+    LOAD_KATEX, LOAD_MATHJAX, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_HTML, SEARCH_SCRIPT,
+    STOPWORDS,
 };
+use crate::utils::filesys::{copy_directory, relative_to};
 use crate::utils::utils;
 use log::{debug, info, warn};
 use serde_json;
 
-use crate::exporting::config::{ExportConfig, MathEngine};
-use crate::utils::constants::TAG_DIR;
-use crate::utils::filesys::{self, get_all_notes_exclude, slugify_path, write_to_file};
-use crate::components::link::{Link, LinkType};
 use super::load_static::{ADMONITIONS_CSS, BROKEN_LINKS};
-use crate::preamble::formatter::FormatPreamble;
 use super::search::SearchEntry;
+use crate::components::link::{Link, LinkType};
 use crate::components::tag_tree::Tree;
 use crate::components::{archive, note};
+use crate::exporting::config::{ExportConfig, MathEngine};
+use crate::preamble::formatter::FormatPreamble;
+use crate::utils::constants::TAG_DIR;
+use crate::utils::filesys::{self, get_all_notes_exclude, slugify_path, write_to_file};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -65,7 +64,6 @@ Total Build Time: {time:?}
     }
 }
 
-
 pub struct Exporter<'a> {
     input_dir: &'a Path,
     output_dir: &'a Path,
@@ -104,23 +102,21 @@ impl<'a> Exporter<'a> {
     pub fn input_directory(&self) -> &Path {
         &self.input_dir
     }
-    
+
     pub fn config(&self) -> &ExportConfig {
         &self.cfg
     }
 
     fn update_backlinks(&self, backlinks: &mut Backlinks, note: &note::Note) {
-        for link in note.links
-                        .iter()
-                        .filter(
-                            |link| link.link_type() == LinkType::Note && 
-                                    !link.broken
-                        )
-                        {
-                backlinks
-                    .entry(link.target.with_extension("md"))
-                    .or_insert_with(HashSet::new)
-                    .insert(Link::from_note(&note).set_relative(self.input_dir));
+        for link in note
+            .links
+            .iter()
+            .filter(|link| link.link_type() == LinkType::Note && !link.broken)
+        {
+            backlinks
+                .entry(link.target.with_extension("md"))
+                .or_insert_with(HashSet::new)
+                .insert(Link::from_note(&note).set_relative(self.input_dir));
         }
     }
 
@@ -522,9 +518,10 @@ impl<'a> Exporter<'a> {
         backlinks: &'b Backlinks,
     ) {
         //TODO factor out the transformation of the note path.
-        if let Some(refering_notes) = backlinks.get(
-                    &utils::prepend_slash(relative_to(&new_note.path, &self.input_dir))
-                ) {
+        if let Some(refering_notes) = backlinks.get(&utils::prepend_slash(relative_to(
+            &new_note.path,
+            &self.input_dir,
+        ))) {
             refering_notes
                 .iter()
                 .for_each(|refering_note| new_note.add_backlink(&refering_note))
@@ -535,7 +532,7 @@ impl<'a> Exporter<'a> {
 
     ///Slugify the portion of the path relative to the input directory, or the whole thing, if the
     ///input directory is not part of the `path`.
-    fn slugify_path<'p>(
+    pub fn slugify_path<'p>(
         &self,
         path: &'p Path,
         extension: Option<&str>,
@@ -627,11 +624,9 @@ impl<'a> Exporter<'a> {
         debug!("Before slug: {}", path.to_string_lossy());
         debug!("input dir: {}", self.input_dir.to_string_lossy());
 
-        let output_path = self.input_dir.join(self
-            .slugify_path(
-                &relative_to(&path, &self.input_dir), 
-            extension)
-            .expect("Could not slugify path.")
+        let output_path = self.input_dir.join(
+            self.slugify_path(&relative_to(&path, &self.input_dir), extension)
+                .expect("Could not slugify path."),
         );
         debug!("After slug: {}", output_path.to_string_lossy());
         utils::move_to(&output_path, &self.input_dir, &self.output_dir)
@@ -656,6 +651,14 @@ impl<'a> Exporter<'a> {
         }
 
         let (input_path, output_path) = self.get_paths_of_linked_attach(link);
+        if let Some(container) = &output_path.parent() {
+            filesys::create_dir_if_not_exists(container).unwrap_or_else(|e| {
+                warn!(
+                    "Could not create the containing directory for attachment {:?}! got error {:?}",
+                    output_path, e
+                );
+            });
+        }
         if let Err(err) = std::fs::copy(&input_path, &output_path) {
             warn!(
                 "Could not copy the attachment from {:?} to {:?}! Got error {:?}",
