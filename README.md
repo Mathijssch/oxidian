@@ -1,4 +1,58 @@
-# Convert Obsidian-flavored Markdown notes to HTML
+# Oxidian 
+
+Translate Obsidian-style notes to html.
+
+
+## Features 
+
+- Automatically build an archive page with all the notes in the Vault sorted chronologically.
+- Automatically build an index page for all the tags that appears throughout the notes.
+
+
+## Installation
+
+### Build from source using Cargo
+
+Clone the repository and simply use `cargo build` or `cargo install --path .` 
+
+### Download prebuilt binaries
+
+TODO
+
+## Usage 
+
+Once `oxidian` is installed, you can run it using
+```
+oxidian build <notes_directory>
+```
+
+Check `oxidian --help` to get more information about the available commands 
+and their arguments.
+
+
+## Configuration 
+
+### Config file
+
+Several settings can be set in a `config.toml` file, which `oxidian` looks for 
+in the root of your notebook.
+
+TODO: document the configuration
+
+### Logging
+
+Setting the `RUST_LOG` environment variable controls the logging level.
+For instance, to get some feedback on what `oxidian` is doing, 
+run `export RUST_LOG=info` before calling `oxidian`.
+
+
+
+## Alternatives 
+There are many options. For instance, check out [Obsidian awesome](https://github.com/kmaasrud/awesome-obsidian?tab=readme-ov-file#publishing).
+
+However, this tool was written to allow me to disconnect from the limitations 
+of Obsidian, and allow me to implement my own custom extensions.  
+
 
 ## To-do 
 - [x] Detect broken links
@@ -33,44 +87,8 @@
     - [x] Avoid FOUC
     - [x] Add the counts to the tags in the tree
 
-## Filenames for tags {#tags}
 
-Currently, the filenames for tags are generated separately in the code for the index 
-pages and the code for the archive pages. This is because the former is based on 
-the tree datastructure, instead of on the full string of the tag. 
-Just using the full path and having a single function that turns it into a filename is better.
-
-
-## Disclaimer 
+## Warning
 
 - This is very much a work in progress and is neither efficient, nor complete. 
 - There are still many `unwrap()` statements in the code, which should be replaced by proper error handling.
-
-## Simple approach 
-
-For all files in the directory 
-- If the file is a markdown file
-    - Parse it as a note
-- Else
-    - copy it to the output (if necessary) 
-
-
-- Parse link
-    - determine the type
-
-
-## Minimal approach
-
-1. Identify the index.
-
-Routine: 
-```
-parse(note){ 
-    identify links 
-    for each link
-        parse link
-}
-```
-2. Parse the index. 
-    - Identify the links.
-    - For each link, repeat 
