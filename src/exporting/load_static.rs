@@ -29,4 +29,5 @@ pub const ICON: &[u8;813] = include_bytes!("templates/static/icon.svg");
 pub const INDEX_CSS: &str = include_str!("templates/static/css/index.css");
 pub const BUTTON_CSS: &str = include_str!("templates/static/css/buttons.css");
 pub const ADMONITIONS_CSS: &str = include_str!("templates/static/css/admonitions.css");
+pub const TUFTE_CSS: &str = include_str!("templates/static/css/tufte.css");
 //pub const ICONS_CSS: &str = include_str!("templates/static/css/material_icons.css");
