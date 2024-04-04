@@ -1,30 +1,29 @@
+use chrono::{Datelike, NaiveDate};
+use log::{debug, info};
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, Error, Write};
 use std::path::{Path, PathBuf};
-use log::{debug,info};
-use chrono::NaiveDate;
 
 //use super::formatting::link_to_md;
 use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use crate::components::link::{Link, LinkType};
-use crate::core::sanitization::Sanitization;
 use crate::core::html;
-use crate::obsidian::{headers::HeaderParser,
-                highlights::replace_obs_highlights,
-                tags, labels, admonitions, comments, links,
+use crate::core::sanitization::Sanitization;
+use crate::obsidian::{
+    admonitions, comments, headers::HeaderParser, highlights::replace_obs_highlights, labels,
+    links, tags,
 };
 use crate::utils::{
-    placeholders,
-    utils::{markdown_to_html, read_file_to_str, self},
-    filesys, formatting
+    filesys, formatting, placeholders,
+    utils::{self, markdown_to_html, read_file_to_str},
 };
 use yaml_rust::Yaml;
 
-
 #[allow(dead_code)]
-#[derive(Debug,Clone)]
-pub struct Note<'a> { pub path: PathBuf,
+#[derive(Debug, Clone)]
+pub struct Note<'a> {
+    pub path: PathBuf,
     pub links: Vec<Link>,
     pub frontmatter: Option<Yaml>,
     pub tags: Vec<tags::Tag>,
@@ -32,9 +31,8 @@ pub struct Note<'a> { pub path: PathBuf,
     placeholders: Vec<Sanitization>,
     pub title: String,
     pub backlinks: HashSet<&'a Link>,
-    creation_date: Option<NaiveDate> 
+    creation_date: Option<NaiveDate>,
 }
-
 
 impl<'a> AsRef<Note<'a>> for Note<'a> {
     fn as_ref(&self) -> &Note<'a> {
@@ -88,7 +86,7 @@ impl<'a> Note<'a> {
         content
     }
 
-    fn process_headers(content: String) -> String { 
+    fn process_headers(content: String) -> String {
         let mut parser = HeaderParser::new();
 
         // Add a bit of buffer capacity for the newlines that we'll add.
@@ -96,29 +94,33 @@ impl<'a> Note<'a> {
         for line in content.lines() {
             if let Some(updated_line) = parser.process_line(line) {
                 updated.push_str(&updated_line);
-            } else 
-            {
+            } else {
                 updated.push_str(line);
             }
             updated.push('\n');
         }
         updated
     }
-    
+
     // Get a raw version of the notes, not meant for postprocessing, just for extraction of
     // information.
-    pub fn new_raw(path: PathBuf, ref_path: &Path, find_files: bool, ignore: &Vec<PathBuf>) -> Result<Self, std::io::Error> {
+    pub fn new_raw(
+        path: PathBuf,
+        ref_path: &Path,
+        find_files: bool,
+        ignore: &Vec<PathBuf>,
+    ) -> Result<Self, std::io::Error> {
         let mut content = Self::sanitize(&read_file_to_str(&path)?);
 
         let frontmatter = match extract_yaml_frontmatter(&content) {
             Some(fm_content) => {
                 let fm_count = fm_content.lines().count() + 2; // +2 for the surrounding "---"
                                                                // lines
-                //debug!("Found {} lines of frontmatter in {:?}", fm_count, path);
+                                                               //debug!("Found {} lines of frontmatter in {:?}", fm_count, path);
                 content = utils::remove_first_n_lines(&content, fm_count);
                 parse_frontmatter(&fm_content).ok()
-            }, 
-            None => None
+            }
+            None => None,
         };
 
         let links = Self::find_obsidian_links(&path, ref_path, &content, find_files, ignore);
@@ -133,23 +135,27 @@ impl<'a> Note<'a> {
             placeholders: vec![],
             tags: vec![],
             backlinks: HashSet::new(),
-            creation_date: None
+            creation_date: None,
         })
-
     }
 
-    pub fn new(path: PathBuf, base_dir: &Path, search_links: bool, ignore: &Vec<PathBuf>) -> Result<Self, std::io::Error> {
+    pub fn new(
+        path: PathBuf,
+        base_dir: &Path,
+        search_links: bool,
+        ignore: &Vec<PathBuf>,
+    ) -> Result<Self, std::io::Error> {
         let mut content = Self::sanitize(&read_file_to_str(&path)?);
 
         let frontmatter = match extract_yaml_frontmatter(&content) {
             Some(fm_content) => {
                 let fm_count = fm_content.lines().count() + 2; // +2 for the surrounding "---"
                                                                // lines
-                //debug!("Found {} lines of frontmatter in {:?}", fm_count, path);
+                                                               //debug!("Found {} lines of frontmatter in {:?}", fm_count, path);
                 content = utils::remove_first_n_lines(&content, fm_count);
                 parse_frontmatter(&fm_content).ok()
-            }, 
-            None => None
+            }
+            None => None,
         };
 
         // Remove code blocks, and math.
@@ -158,16 +164,18 @@ impl<'a> Note<'a> {
         let mut links = Self::find_obsidian_links(&path, base_dir, &content, search_links, ignore);
         // Replace links by placeholders, since they may also contain protected symbols with
         // special meaning, like `^` and `#`.
-        let mut markdown_links = Self::find_markdown_links(&path, &base_dir, &content, search_links, ignore);
+        let mut markdown_links =
+            Self::find_markdown_links(&path, &base_dir, &content, search_links, ignore);
         links.append(&mut markdown_links);
         content = Self::replace_links_by_placeholders(content, &mut placeholders, &links);
         // Get the labels of block-refs
         let blockref_labels = Self::find_blockref_labels(&content);
-        content = Self::replace_blockrefs_by_placeholders(content, &mut placeholders, &blockref_labels);
+        content =
+            Self::replace_blockrefs_by_placeholders(content, &mut placeholders, &blockref_labels);
         //content = Self::replace_links_by_placeholders(content, &mut placeholders, &markdown_links);
         let tags = Self::find_tags(&content);
         // Replace admonitions by placeholders, so they are not recognized as quotes by the
-        // markdown processor 
+        // markdown processor
         content = Self::replace_admonitions_by_placeholders(content, &mut placeholders);
         let title = Self::get_title(&path, frontmatter.as_ref());
 
@@ -181,12 +189,14 @@ impl<'a> Note<'a> {
             placeholders,
             tags,
             backlinks: HashSet::new(),
-            creation_date: None
+            creation_date: None,
         })
     }
 
     pub fn cache_creation_time(&mut self, use_git: bool) {
-        if self.creation_date.is_some() { return }
+        if self.creation_date.is_some() {
+            return;
+        }
 
         if let Ok(date) = Self::compute_creation_date(&self.frontmatter, &self.path, use_git) {
             self.creation_date = Some(date);
@@ -200,15 +210,15 @@ impl<'a> Note<'a> {
     }
 
     fn compute_creation_date(
-        frontmatter: &Option<Yaml>, 
+        frontmatter: &Option<Yaml>,
         path: &Path,
-        use_git: bool
-    ) -> Result<NaiveDate, std::io::Error>  {
-        // Try frontmatter 
+        use_git: bool,
+    ) -> Result<NaiveDate, std::io::Error> {
+        // Try frontmatter
         if let Some(fm) = frontmatter {
             if let Some(date) = fm["date_created"].as_str() {
                 debug!("Reading creation date from frontmatter.");
-                if let Ok(parsed) = NaiveDate::parse_from_str(date, "%d-%m-%Y") { 
+                if let Ok(parsed) = NaiveDate::parse_from_str(date, "%d-%m-%Y") {
                     return Ok(parsed);
                 };
                 info!("Failed to read creation date from frontmatter");
@@ -216,14 +226,14 @@ impl<'a> Note<'a> {
         }
 
         // Try to read the creation date from git.
-        if use_git { 
+        if use_git {
             if let Some(time) = utils::get_git_creation_time(path) {
                 return Ok(time.date());
-            } 
+            }
             info!("Failed to read creation date from git");
         };
 
-        // Try to work from the system time 
+        // Try to work from the system time
         let modified_time = filesys::get_modification_time(path)?;
         Ok(utils::to_datetime(modified_time).date())
     }
@@ -268,63 +278,87 @@ impl<'a> Note<'a> {
     ) -> String {
         let mut content = content;
         for label in labels {
-            let link_ph = Sanitization::new(label.source.to_string(),
-                                            html::HtmlTag::span().with_id(&label.label).wrap(""),
-                                            false);
+            let link_ph = Sanitization::new(
+                label.source.to_string(),
+                html::HtmlTag::span().with_id(&label.label).wrap(""),
+                false,
+            );
             content = content.replace(&link_ph.original, &link_ph.get_placeholder());
             placeholders.push(link_ph);
         }
         content
     }
     fn replace_admonitions_by_placeholders(
-        content: String, 
-        placeholders: &mut Vec<Sanitization>
-        ) -> String {
+        content: String,
+        placeholders: &mut Vec<Sanitization>,
+    ) -> String {
         let mut admonitions = admonitions::AdmonitionParser::new();
         let mut output = String::with_capacity(content.len());
         for line in content.lines() {
             match admonitions.process_line(line) {
-                admonitions::ParseOutput::Placeholder { replacement, placeholder } => {
+                admonitions::ParseOutput::Placeholder {
+                    replacement,
+                    placeholder,
+                } => {
                     output.push_str(&replacement);
-                    if let Some(ph) = placeholder { 
+                    if let Some(ph) = placeholder {
                         placeholders.push(ph);
                     }
-                }, 
-                admonitions::ParseOutput::None => {output.push_str(line)}
+                }
+                admonitions::ParseOutput::None => output.push_str(line),
             }
             output.push('\n');
         }
         output
     }
 
-
-    fn resolve_links(links: &mut Vec<Link>, ref_path: &Path, root_path: &Path, search_links: bool, ignore: &Vec<PathBuf>) {
-        for link in links.iter_mut().filter(|l| l.link_type() == LinkType::Note ) {
+    fn resolve_links(
+        links: &mut Vec<Link>,
+        ref_path: &Path,
+        root_path: &Path,
+        search_links: bool,
+        ignore: &Vec<PathBuf>,
+    ) {
+        for link in links.iter_mut().filter(|l| l.link_type() == LinkType::Note) {
             match filesys::resolve_path(&link.target, ref_path, root_path, search_links, ignore) {
-                filesys::ResolvedPath::Unchanged => {},
-                filesys::ResolvedPath::Broken => { link.set_broken(true); },
-                filesys::ResolvedPath::Updated(new_path) => { 
+                filesys::ResolvedPath::Unchanged => {}
+                filesys::ResolvedPath::Broken => {
+                    link.set_broken(true);
+                }
+                filesys::ResolvedPath::Updated(new_path) => {
                     //info!("Updating {:?} to {:?}", link.target, new_path);
-                    link.set_target(new_path); 
+                    link.set_target(new_path);
                 }
             }
         }
     }
-    
-    fn find_obsidian_links(ref_path: &Path, root_path: &Path, content: &str, search_links: bool, ignore: &Vec<PathBuf>) -> Vec<Link> {
+
+    fn find_obsidian_links(
+        ref_path: &Path,
+        root_path: &Path,
+        content: &str,
+        search_links: bool,
+        ignore: &Vec<PathBuf>,
+    ) -> Vec<Link> {
         let mut links = links::find_obsidian_links(content);
         Self::resolve_links(&mut links, ref_path, root_path, search_links, ignore);
         links
     }
 
-    fn find_markdown_links(ref_path: &Path, root_path: &Path, content: &str, search_links: bool, ignore: &Vec<PathBuf>) -> Vec<Link> {
+    fn find_markdown_links(
+        ref_path: &Path,
+        root_path: &Path,
+        content: &str,
+        search_links: bool,
+        ignore: &Vec<PathBuf>,
+    ) -> Vec<Link> {
         let mut links = links::find_markdown_links(content);
         Self::resolve_links(&mut links, ref_path, root_path, search_links, ignore);
         links
     }
-    
+
     /// Find labels used for blockrefs: `^<alias>`. These get translated into empty spans with
-    /// corresponding id `<alias>`. 
+    /// corresponding id `<alias>`.
     ///
     /// ## Example
     /// `^124` -> `<span id="124"></span>`
@@ -337,9 +371,9 @@ impl<'a> Note<'a> {
         tags::find_tags(content)
     }
 
-    ///Remove protected pieces of content, like math and code. 
+    ///Remove protected pieces of content, like math and code.
     ///
-    ///These should be interpreted literally and should be ignored when scanning for 
+    ///These should be interpreted literally and should be ignored when scanning for
     ///tags, links etc. Therefore, these elements are detected first and replaced with a
     ///hash serving as a placeholder.
     fn remove_protected_elems(content: String) -> (String, Vec<Sanitization>) {
@@ -352,10 +386,12 @@ impl<'a> Note<'a> {
         strip_comments(content)
     }
 
-    /// Add a backlink to `self`s set of backlinks. 
-    /// 
-    /// The provided [Link] should be a link to the note that refers to [self]. 
-    pub fn add_backlink(&mut self, link: &'a Link) { self.backlinks.insert(link); }
+    /// Add a backlink to `self`s set of backlinks.
+    ///
+    /// The provided [Link] should be a link to the note that refers to [self].
+    pub fn add_backlink(&mut self, link: &'a Link) {
+        self.backlinks.insert(link);
+    }
 
     ///Export the current note to a html file at the specified path.
     pub fn to_html<U: AsRef<str>>(&self, path: &Path, template_content: U) -> Result<(), Error> {
@@ -363,8 +399,11 @@ impl<'a> Note<'a> {
         Ok(())
     }
 
-    fn process_highlights(content: &str) -> String { replace_obs_highlights(content) }
+    fn process_highlights(content: &str) -> String {
+        replace_obs_highlights(content)
+    }
 
+    /// Main method to convert a given note to a html file, based on the given template.
     fn to_html_inner(&self, path: &Path, template_content: &str) -> Result<(), Error> {
         if let Some(parent_dir) = path.parent() {
             filesys::create_dir_if_not_exists(&parent_dir).unwrap();
@@ -374,7 +413,7 @@ impl<'a> Note<'a> {
 
         let mut content = self.content.to_owned();
 
-        // Needs to be done before replacing the highlights placeholders back 
+        // Needs to be done before replacing the highlights placeholders back
         // to avoid false matches.
         content = Self::process_highlights(&content);
 
@@ -389,7 +428,8 @@ impl<'a> Note<'a> {
         let mut html_content = markdown_to_html(&content);
 
         for placeholder in self.placeholders.iter().filter(|p| !p.before_markdown) {
-            html_content = html_content.replace(&placeholder.get_placeholder(), &placeholder.replacement);
+            html_content =
+                html_content.replace(&placeholder.get_placeholder(), &placeholder.replacement);
         }
 
         let backlinks: Vec<String> = self
@@ -405,16 +445,30 @@ impl<'a> Note<'a> {
             .collect();
 
         debug!("Note {} has {} backlinks", self.title, backlinks.len());
-        
+
         let backlink_replacement = match backlinks.is_empty() {
             true => "".to_string(),
-            false => html::HtmlTag::div().with_class("backlinks")
-                         .wrap(html::ul(backlinks.iter(), ""))
+            false => html::HtmlTag::div()
+                .with_class("backlinks")
+                .wrap(html::ul(backlinks.iter(), "")),
         };
 
         debug!("Writing note to {}", path.to_string_lossy());
+        let date_string = self.creation_date.map_or_else(
+            || "".to_string(),
+            |date| {
+                html::HtmlTag::div().with_class("date-added").wrap(format!(
+                    "{}-{}-{}",
+                    date.day(),
+                    date.month0() + 1,
+                    date.year_ce().1
+                ))
+            },
+        );
+
         write!(writer, "{}",
-            template_content.replace(r"{{content}}", &html_content)
+            template_content.replace(r"{{date}}", &date_string)
+                            .replace(r"{{content}}", &html_content)
                             .replace(r"{{title}}", &self.title)
                             .replace(r"{{backlinks}}", &backlink_replacement)
         ).expect("Couldn't write note contents.");

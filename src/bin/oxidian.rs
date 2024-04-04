@@ -58,8 +58,9 @@ enum Commands {
         #[arg(short, long)]
         cfg: Option<PathBuf>,
 
-        #[arg(short, long)]
-        full: Option<bool>,
+        /// Do a full rebuild upon detected file changes.
+        #[clap(short, long)]
+        full: bool,
     },
 
     #[command(arg_required_else_help = true)]
@@ -109,7 +110,7 @@ fn main() {
         } => {
             trace!("Running watch command.");
             let out = out.unwrap_or_else(|| default_output_file(&dir));
-            let full = full.unwrap_or(false);
+            //let full = full.unwrap_or(false);
             debug!("output directory: {:?}", out);
             watch(dir, out, cfg, full);
         }
