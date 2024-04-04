@@ -57,6 +57,9 @@ enum Commands {
         /// Path to the config file. Uses `[dir]/config.toml` by default.
         #[arg(short, long)]
         cfg: Option<PathBuf>,
+
+        #[arg(short, long)]
+        full: Option<bool>,
     },
 
     #[command(arg_required_else_help = true)]
@@ -98,11 +101,17 @@ fn main() {
             build_vault(dir, out, cfg);
         }
 
-        Commands::Watch { dir, out, cfg } => {
+        Commands::Watch {
+            dir,
+            out,
+            cfg,
+            full,
+        } => {
             trace!("Running watch command.");
             let out = out.unwrap_or_else(|| default_output_file(&dir));
+            let full = full.unwrap_or(false);
             debug!("output directory: {:?}", out);
-            watch(dir, out, cfg);
+            watch(dir, out, cfg, full);
         }
         Commands::Where {
             dir,
@@ -172,7 +181,12 @@ fn setup_exporter<'a>(
     exporter::Exporter::new(input_dir, output_dir, &cfg)
 }
 
-fn watch(input_dir: PathBuf, output_dir: PathBuf, config_file: Option<PathBuf>) {
+fn watch(
+        input_dir: PathBuf,
+        output_dir: PathBuf,
+        config_file: Option<PathBuf>,
+        full: bool
+    ) {
     use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
     let (tx, rx) = std::sync::mpsc::channel();
 
@@ -201,7 +215,7 @@ fn watch(input_dir: PathBuf, output_dir: PathBuf, config_file: Option<PathBuf>) 
 
     for res in rx {
         match res {
-            Ok(event) => builder.handle_event(event, &mut backlinks),
+            Ok(event) => builder.handle_event(event, &mut backlinks, full),
             Err(error) => log::error!("Error: {error:?}"),
         }
     }

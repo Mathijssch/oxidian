@@ -104,7 +104,15 @@ impl<'a> Exporter<'a> {
         }
     }
 
-    pub fn handle_event(&mut self, event: Event, backlinks: &mut Backlinks) {
+    pub fn handle_event(&mut self, event: Event, backlinks: &mut Backlinks, 
+        full_rebuid: bool) {
+        if full_rebuid {
+            match event.kind {
+                EventKind::Modify(_) | EventKind::Remove(_) => { self.export() },
+                _ => { return; }
+            };
+        }
+        
         match event.kind {
             EventKind::Modify(kind) => {
                 self.handle_modify(event, kind, backlinks);
