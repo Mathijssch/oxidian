@@ -125,7 +125,9 @@ pub fn generate_archive_page_html<'a>(
         html_body.push_str(&collapsible_year);
     }
 
-    template.replace("{{title}}", &title)
+    template
+        .replace("{{date}}", "")
+        .replace("{{title}}", &title)
         .replace("{{backlinks}}", "")
         .replace("{{content}}", &html_body)
 }

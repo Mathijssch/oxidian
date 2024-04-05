@@ -300,7 +300,9 @@ impl Tree {
         ).collect();
         // Title and header 
         let title = format!("Tag - {} / {}", parent_tag_names.join(" / "), self.name);
-        let html = template.replace("{{content}}", &html_content)
+        let html = template
+            .replace("{{date}}", "")
+            .replace("{{content}}", &html_content)
             .replace("{{backlinks}}", "")
             .replace("{{title}}", &title);
 
