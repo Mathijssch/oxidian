@@ -19,6 +19,7 @@ pub struct ExportConfig {
     pub performance: PerformanceConfig,
     pub search: SearchConfig,
     pub math: MathConfig,
+    pub root_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -145,6 +146,7 @@ impl Default for ExportConfig {
             performance: PerformanceConfig::default(),
             search: SearchConfig::default(),
             math: MathConfig::default(),
+            root_path: Some("/".to_string())
         }
     }
 }

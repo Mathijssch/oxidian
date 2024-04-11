@@ -96,7 +96,6 @@ body {
 .admonition-content {
     margin: 10px 15px;
     position: relative;
-    overflow-x: auto;
 }
 
 

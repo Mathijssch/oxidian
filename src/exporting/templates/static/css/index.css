@@ -338,6 +338,12 @@ article img {
     width: 80%;
     max-width: 95%;
     height: auto;
+    transition: transform .2s;
+}
+
+/* Images */
+article img:hover {
+    transform: scale(2);
 }
 
 article img[width] {

@@ -110,7 +110,8 @@ impl<'a> Note<'a> {
         find_files: bool,
         ignore: &Vec<PathBuf>,
     ) -> Result<Self, std::io::Error> {
-        let mut content = Self::sanitize(&read_file_to_str(&path)?);
+        let mut content = read_file_to_str(&path)?;
+        //let mut content = Self::sanitize(&read_file_to_str(&path)?);//;
 
         let frontmatter = match extract_yaml_frontmatter(&content) {
             Some(fm_content) => {
@@ -145,7 +146,8 @@ impl<'a> Note<'a> {
         search_links: bool,
         ignore: &Vec<PathBuf>,
     ) -> Result<Self, std::io::Error> {
-        let mut content = Self::sanitize(&read_file_to_str(&path)?);
+        let mut content = read_file_to_str(&path)?;
+        //let mut content = Self::sanitize(&read_file_to_str(&path)?);
 
         let frontmatter = match extract_yaml_frontmatter(&content) {
             Some(fm_content) => {

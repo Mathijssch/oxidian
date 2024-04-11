@@ -165,6 +165,15 @@ impl<'a> Exporter<'a> {
         self.note_template = self.note_template.replace("{{SEARCH_SCRIPT}}", replacement);
     }
 
+    fn set_base_dir(&mut self) {
+        info!("Adding base dir");
+        if let Some(base_dir) = &self.cfg.root_path {
+            self.note_template = self
+                .note_template
+                .replace("{{root}}", &format!("<base href=\"{}\"/>", base_dir));
+        }
+    }
+
     fn set_search_component(&mut self) {
         info!("Adding snippet to add a search bar.");
         let replacement = if self.cfg.search.enable {
@@ -270,6 +279,7 @@ impl<'a> Exporter<'a> {
 
         self.set_search_loading_snip();
         self.set_search_component();
+        self.set_base_dir();
     }
 
     pub fn export(&mut self) -> Backlinks {
