@@ -220,9 +220,16 @@ impl<'a> Note<'a> {
         if let Some(fm) = frontmatter {
             if let Some(date) = fm["date_created"].as_str() {
                 debug!("Reading creation date from frontmatter.");
-                if let Ok(parsed) = NaiveDate::parse_from_str(date, "%d-%m-%Y") {
-                    return Ok(parsed);
-                };
+                for date_fmt in ["%Y-%m-%d", "%d-%m-%Y"] {
+                    debug!("Trying format {}...", date_fmt);
+                    if let Ok(parsed) = NaiveDate::parse_from_str(date, date_fmt) {
+                        return Ok(parsed);
+                    }
+                }
+                //debug!("Trying d-m-Y instead ...");
+                //if let Ok(parsed) = NaiveDate::parse_from_str(date, ) {
+                //    return Ok(parsed);
+                //};
                 info!("Failed to read creation date from frontmatter");
             }
         }
