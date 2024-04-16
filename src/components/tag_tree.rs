@@ -50,7 +50,6 @@ impl Tree {
         // there, and we can no longer access our reference to it. An alternative way to do things
         // would be to implement a way to add links to a descendant of the tree with a given
         // sequence of names, but this would require another set of iterations through the tree.
-        
         if branch_iter.peek().is_none() {
             // No more elements left. 
             for link in links { 
@@ -102,11 +101,12 @@ impl Tree {
     /// Get all the items in this tree recursively (including the items in the subtrees) 
     /// TODO - Figure out how to do this with iterators.
     #[allow(dead_code)]
-    pub fn get_contents_recursive(&self) -> Vec<&Link> {
-        let mut result: Vec<&Link> = self.contents.iter().collect();
+    pub fn get_contents_recursive(&self) -> BTreeSet<&Link> {
+        let mut result: BTreeSet<&Link> = self.contents.iter().collect();
         for subtree in self.children.values() {
-            let mut subtree_content = subtree.get_contents_recursive(); 
-            result.append(&mut subtree_content)
+            let subtree_content = subtree.get_contents_recursive(); 
+            result.extend(&subtree_content);
+            //result.append(&mut subtree_content)
         }
         result
     }
@@ -201,7 +201,7 @@ impl Tree {
 
         let mut letter: Option<char> = None;
         let mut li_notes_per_letter = "".to_string();
-        for link in &self.contents {
+        for link in &self.get_contents_recursive() {
             let new_initial = match letter {
                 Some(l) => l.to_lowercase().ne(utils::initial(link.link_text()).to_lowercase()),
                 None    => true
