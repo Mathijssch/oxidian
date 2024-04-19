@@ -69,6 +69,7 @@ of Obsidian, and allow me to implement my own custom extensions.
 - [x] Handle size arguments in included figures
 - [x] Generate tag overview pages 
 - [x] Populate navbar
+- [ ] Refactor so that the exporter only handles io. This makes it easier to unit test operations independently from the file system.
 - [~] Unify the way the filenames for tags are generated. See [filenames for tags](#tags).
 - [ ] Use Handlebars for templating
 - [x] Generate timeline page

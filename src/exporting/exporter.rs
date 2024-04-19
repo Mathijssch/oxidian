@@ -87,7 +87,8 @@ fn get_all_notes<'b>(
 }
 
 impl<'a> Exporter<'a> {
-    pub fn new(input_dir: &'a Path, output_dir: &'a Path, cfg: &'a ExportConfig) -> Self {
+    pub fn new(
+        input_dir: &'a Path, output_dir: &'a Path, cfg: &'a ExportConfig) -> Self {
         let stats = ExportStats::new();
         let note_template = HTML_TEMPLATE.to_string();
         Exporter {

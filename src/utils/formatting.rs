@@ -158,7 +158,7 @@ mod tests {
             .to_string();
         TestCase {
             input_link: Link::from_obsidian_link("path_to_image.png", true).unwrap(),
-            expected_output: format!("<img src=\"/{}\">  </img>", slug_name).to_string(),
+            expected_output: format!("<img src=\"{}\">  </img>", slug_name).to_string(),
         }
     }
 
