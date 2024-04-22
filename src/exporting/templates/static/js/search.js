@@ -34,3 +34,18 @@ async function register_handler() {
 }
 
 register_handler();
+
+document.addEventListener('keydown', handleKeypress);
+
+function handleKeypress(e) {
+    if (e.ctrlKey) {
+        if ((e.key == "k") || (e.key == "p")) {
+            activateSearch();
+        }
+    }
+}
+
+
+function activateSearch() {
+    selectElement.focus();
+}
