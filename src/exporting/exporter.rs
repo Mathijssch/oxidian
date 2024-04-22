@@ -1,7 +1,5 @@
 use super::load_static::{
-    BUTTON_CSS, DARKMODE_SCRIPT, FOUC_SCRIPT, HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG,
-    LOAD_KATEX, LOAD_MATHJAX, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_HTML, SEARCH_SCRIPT,
-    STOPWORDS, TUFTE_CSS,
+    BUTTON_CSS, DARKMODE_SCRIPT, FOUC_SCRIPT, HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG, LOAD_KATEX, LOAD_MATHJAX, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_HTML, SEARCH_SCRIPT, STOPWORDS, THM_CSS, TUFTE_CSS
 };
 use crate::utils::filesys::{copy_directory, relative_to};
 use crate::utils::utils;
@@ -497,6 +495,7 @@ impl<'a> Exporter<'a> {
         self.save_css(BUTTON_CSS, "buttons.css");
         self.save_css(ADMONITIONS_CSS, "admonitions.css");
         self.save_css(TUFTE_CSS, "tufte.css");
+        self.save_css(THM_CSS, "theorems.css");
     }
 
     fn copy_static_files(&self) {

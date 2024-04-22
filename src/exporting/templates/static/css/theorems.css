@@ -1,0 +1,137 @@
+ /* Theorems and the like  */
+ article {
+     counter-reset: theorem-counter;
+ }
+
+ .theorem {
+     display: block;
+     margin: 12px 0;
+     font-style: italic;
+ }
+
+ .theorem:before {
+     counter-increment: theorem-counter;
+     content: "Theorem " counter(theorem-counter) " \2014 ";
+     /* // font-weight: bold; */
+     font-variant: small-caps;
+     font-style: normal;
+ }
+
+ .theorem[name] {
+     counter-increment: theorem-counter;
+     content: "Theorem " counter(theorem-counter) " (" attr(name) ") \2014 ";
+ }
+
+
+ .lemma {
+     display: block;
+     margin: 12px 0;
+     font-style: italic;
+ }
+
+ .lemma:before {
+     content: "Lemma.";
+     font-weight: bold;
+     font-style: normal;
+ }
+
+ .proof {
+     display: block;
+     margin: 12px 0;
+     font-style: normal;
+ }
+
+ .proof:before {
+     content: "Proof.";
+     font-style: italic;
+ }
+
+ .proof:after {
+     content: "\25FC";
+     float: right;
+ }
+
+ .definition {
+     display: block;
+     margin: 12px 0;
+     font-style: normal;
+ }
+
+ .definition:before {
+     counter-increment: theorem-counter;
+     content: "Definition " counter(theorem-counter) "\2014 ";
+     /* // font-weight: bold; */
+     font-variant: small-caps;
+     font-style: normal;
+ }
+
+ .definition[name]::before {
+     counter-increment: theorem-counter;
+     content: "Definition " counter(theorem-counter) " (" attr(name) ")  \2014 ";
+ }
+
+ .assumption {
+     display: block;
+     margin: 12px 0;
+     font-style: normal;
+ }
+
+ .assumption:before {
+     counter-increment: theorem-counter;
+     content: "Assumption " counter(theorem-counter) "\2014 ";
+     /* // font-weight: bold; */
+     font-variant: small-caps;
+     font-style: normal;
+ }
+
+ .assumption[name]:before {
+     counter-increment: theorem-counter;
+     content: "Assumption " counter(theorem-counter) " (" attr(name) ") \2014 ";
+     /* // font-weight: bold; */
+     font-variant: small-caps;
+     font-style: normal;
+ }
+
+
+ .corollary {
+     display: block;
+     margin: 12px 0;
+     font-style: normal;
+ }
+
+ .corollary:before {
+     content: "Corollary \2014 ";
+     /* // font-weight: bold; */
+     font-variant: small-caps;
+     font-style: normal;
+ }
+
+ .corollary[name]:before {
+     content: "Corollary (" attr(name) ") \2014 ";
+     /* // font-weight: bold; */
+     font-variant: small-caps;
+     font-style: normal;
+ }
+
+
+ .example {
+     display: block;
+     margin: 12px 0;
+     font-style: italic;
+ }
+
+ .example:before {
+     counter-increment: theorem-counter;
+     content: "Example " counter(theorem-counter) " \2014 ";
+     /* // font-weight: bold; */
+     font-variant: small-caps;
+     font-style: normal;
+ }
+
+ .example:before {
+     counter-increment: theorem-counter;
+     content: "Example " counter(theorem-counter) " (" attr(name) ") \2014 ";
+     /* // font-weight: bold; */
+     font-variant: small-caps;
+     font-style: normal;
+ }
