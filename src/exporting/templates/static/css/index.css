@@ -338,12 +338,18 @@ article img {
     width: 80%;
     max-width: 95%;
     height: auto;
-    transition: transform .2s;
+    transition: transform .2s background .2s border-color .2s;
 }
 
 /* Images */
 article img:hover {
     transform: scale(2);
+    background: var(--bg-color);
+    border-color: var(--text-very-faint);
+    border: solid 1px var(--text-very-faint);
+    border-radius: 5px;
+    position: relative;
+    z-index: 10;
 }
 
 article img[width] {
@@ -1058,7 +1064,8 @@ details ul {
     font-size: smaller;
     color: var(--tag-text);
 }
+
 /* Workaround for Pulldown cmark issue: https://github.com/pulldown-cmark/pulldown-cmark/issues/464 */
-.footnote-definition>p{ 
+.footnote-definition>p {
     display: inline;
 }
