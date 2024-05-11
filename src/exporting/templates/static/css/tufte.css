@@ -12,7 +12,7 @@ body {
     float: right;
     clear: right;
     font-style: italic;
-    margin-right: -60%;
+    margin-right: -55%;
     width: 50%;
     margin-top: 0.3rem;
     margin-bottom: 0;
@@ -44,7 +44,7 @@ body {
 
 blockquote .sidenote,
 blockquote .marginnote {
-    margin-right: -82%;
+    margin-right: -65%;
     min-width: 59%;
     text-align: left;
 }
