@@ -151,7 +151,7 @@ impl<'a> HtmlTag<'a>
         self 
     }
 
-    pub fn with_attr<K: Into<String>, V: std::fmt::Display>(&mut self, attr_name: K, attr_value: V) -> &mut Self { 
+    pub fn with_attr<K: Into<String>, V: std::fmt::Display>(&mut self, attr_name: K, attr_value: V) -> &Self { 
         self.options.insert(attr_name.into(), format!("{}", attr_value));
         self
     }
@@ -159,7 +159,11 @@ impl<'a> HtmlTag<'a>
     fn format_attrs(&self) -> String {
         let mut result = "".to_string();
         for (attr_name, attr_value) in self.options.iter() {
-            result.push_str(&format!(" {}=\"{}\"", attr_name, attr_value));
+            if attr_value.len() > 0 {
+                result.push_str(&format!(" {}=\"{}\"", attr_name, attr_value));
+            } else {
+                result.push_str(&format!(" {}", attr_name));
+            }
         }
         result
     }

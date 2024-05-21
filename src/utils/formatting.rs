@@ -85,7 +85,10 @@ fn render_link(link: &Link, to_html: bool) -> String {
 
             let mut tag = match filetype {
                 FileType::Image => html::HtmlTag::img(&target_file),
-                FileType::Video => html::HtmlTag::video(&target_file),
+                FileType::Video => {let mut video_tag = html::HtmlTag::video(&target_file);
+                                    video_tag.with_attr("controls", "");
+                                    video_tag
+                                    }
                 _ => { return render_link_aux(&link_target_str, &link_text, to_html, None); },
             };
 
