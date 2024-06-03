@@ -173,6 +173,11 @@ impl<'a> Exporter<'a> {
         }
     }
 
+    fn set_title(&mut self) {
+        info!("Adding notebook title");
+        self.note_template = self.note_template.replace("{{title}}", &self.cfg.title);
+    }
+
     fn set_search_component(&mut self) {
         info!("Adding snippet to add a search bar.");
         let replacement = if self.cfg.search.enable {
@@ -279,6 +284,7 @@ impl<'a> Exporter<'a> {
         self.set_search_loading_snip();
         self.set_search_component();
         self.set_base_dir();
+        self.set_title();
     }
 
     pub fn export(&mut self) -> Backlinks {

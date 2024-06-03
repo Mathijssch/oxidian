@@ -11,7 +11,7 @@ function present_search_results(results) {
 }
 
 async function getSearchIdx() { 
-    let url = "/static/js/search_index.json";
+    let url = "static/js/search_index.json";
     let response = await fetch(url); 
     return await response.json();
 }
