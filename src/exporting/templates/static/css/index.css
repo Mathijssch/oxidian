@@ -89,6 +89,7 @@ div#navbar-container {
     border-right: 1px solid var(--text-color);
     height: 100dvh;
     overflow: hidden;
+    z-index: 10;
 }
 
 .expand {
