@@ -1,13 +1,16 @@
-# Oxidian 
+<div align="center">
+    <h1>Oxidian</h1>
+    <i>Obsidian-style note-taking from any text editor</i>
+</div>
+<hr>
 
-Translate Obsidian-style notes to html.
+Write [Obsidian](https://obsidian.md/)-flavored Markdown in any text editor (including Obsidian itself)
+and preview an html preview in real-time.
 
-
-## Features 
+## Some additional features 
 
 - Automatically build an archive page with all the notes in the Vault sorted chronologically.
-- Automatically build an index page for all the tags that appears throughout the notes.
-
+- Automatically build an index page for all the tags that appear throughout the notes.
 
 ## Installation
 
@@ -29,7 +32,6 @@ oxidian build <notes_directory>
 Check `oxidian --help` to get more information about the available commands 
 and their arguments.
 
-
 ## Configuration 
 
 ### Config file
@@ -50,10 +52,6 @@ run `export RUST_LOG=info` before calling `oxidian`.
 ## Alternatives 
 There are many options. For instance, check out [Obsidian awesome](https://github.com/kmaasrud/awesome-obsidian?tab=readme-ov-file#publishing).
 
-However, this tool was written to allow me to disconnect from the limitations 
-of Obsidian, and allow me to implement my own custom extensions.  
-
-
 ## To-do 
 - [x] Detect broken links
 - [x] Properly differentiate between absolute and relative paths
@@ -61,10 +59,6 @@ of Obsidian, and allow me to implement my own custom extensions.
     -   First assume the link is relative and check existence of the file. 
     -   If not found, try absolute. 
     -   If still not found, then mark as a broken link.
-- [x] Have an option to find a file, even if the full path is not specified correctly. 
-    - If the path consists of only one component, i.e., `filename`, do a recursive search over the input directory for `filename`. If it can be found, replace the path by this path. Otherwise, mark it as broken. 
-    - This is best to be optional though, since it will make compilation slower.  
-    ~~It remains to test how big the impact of this is.~~ It is quite significant.
 - [ ] (Link previews)
 - [x] Handle size arguments in included figures
 - [x] Generate tag overview pages 
@@ -78,16 +72,7 @@ of Obsidian, and allow me to implement my own custom extensions.
     - [ ] Loop over the recently modified notes, and for each, loop over the keys, and just add/remove accordingly.
 - [ ] [performance]: Replace as many `String`s as possible with `Cow<Str>`s.
 - [ ] [performance]: Search the location of a file by first copying the file tree to memory. This will save many syscalls.
-- [ ] [performance]: Use [AhoCorasick](https://docs.rs/aho-corasick/latest/aho_corasick/struct.AhoCorasick.html) crate for multiple replacements in a string. 
-- [x] Automatically refer to the tag index page, when a tag is detected.
-- [x] Test if checklists are correctly handled.
-- [x] Implement decent styling and frontend functionality in default template.
-    - [x] Mathjax / KaTeX support 
-        - [x] Convert .sty preamble to mathjax config
-    - [x] Navbar styling
-    - [x] Avoid FOUC
-    - [x] Add the counts to the tags in the tree
-
+- [ ] [performance]: Use [AhoCorasick](https://docs.rs/aho-corasick/latest/aho_corasick/struct.AhoCorasick.html) crate for multiple replacements in a string.
 
 ## Warning
 
