@@ -1,8 +1,8 @@
-use std::path::{Path, PathBuf};
-use clap::builder::OsStr;
-use crate::utils::{utils, constants::NOTE_EXT, filesys::relative_to};
-use regex::Regex;
 use super::errors;
+use crate::utils::{constants::NOTE_EXT, filesys::relative_to, utils};
+use clap::builder::OsStr;
+use regex::Regex;
+use std::path::{Path, PathBuf};
 
 lazy_static! {
     static ref OBSIDIAN_NOTE_LINK_RE: Regex = Regex::new(
@@ -15,20 +15,25 @@ use super::note::Note;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Dimensions {
-    pub width: u32, 
-    pub height: Option<u32>
+    pub width: u32,
+    pub height: Option<u32>,
 }
 
 impl Dimensions {
     pub fn new(width: u32) -> Self {
-        Dimensions { width, height: None }
+        Dimensions {
+            width,
+            height: None,
+        }
     }
 
-    pub fn new_with_details(width: u32, height: u32) -> Self { 
-        Dimensions { width, height: Some(height) }
+    pub fn new_with_details(width: u32, height: u32) -> Self {
+        Dimensions {
+            width,
+            height: Some(height),
+        }
     }
 }
-
 
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Link {
@@ -56,7 +61,6 @@ pub enum FileType {
     Audio,
     Misc,
 }
-
 
 fn attachment_type_from_file(file: &Path) -> FileType {
     let ext_own = match file.extension() {
@@ -97,7 +101,10 @@ impl Link {
             return LinkType::Attachment(attach_type);
         };
 
-        if &self.target.starts_with("http://") | &self.target.starts_with("https://") {
+        if &self.target.starts_with("http://")
+            | &self.target.starts_with("https://")
+            | &self.target.starts_with("www.")
+        {
             return LinkType::External;
         };
 
@@ -108,12 +115,16 @@ impl Link {
         LinkType::Note
     }
 
-    pub fn set_broken(&mut self, is_broken: bool) { self.broken = is_broken; }
-    pub fn set_target<T: Into<PathBuf>>(&mut self, target: T) { self.target = target.into(); }
+    pub fn set_broken(&mut self, is_broken: bool) {
+        self.broken = is_broken;
+    }
+    pub fn set_target<T: Into<PathBuf>>(&mut self, target: T) {
+        self.target = target.into();
+    }
 
     ///Express the target of the link relative to the given directory.
     ///If the link is not in the given directory, then the target is not changed.
-    pub fn set_relative(mut self, dir: &Path) -> Self { 
+    pub fn set_relative(mut self, dir: &Path) -> Self {
         let relative_path = relative_to(&self.target, dir);
         self.target = utils::prepend_slash(relative_path);
         self
@@ -126,7 +137,21 @@ impl Link {
             alias: Some(name.into()),
             source_string: "".to_string(),
             is_attachment: false,
-            broken: false, 
+            broken: false,
+        }
+    }
+
+    pub fn from_raw<N: Into<String>, T: AsRef<str>>(alias: N, target: T) -> Self {
+        let tgt = target.as_ref();
+        let target = Path::new(&tgt);
+        let source_string = tgt.into();
+        Self {
+            target: target.into(),
+            subtarget: None,
+            alias: Some(alias.into()),
+            source_string,
+            is_attachment: false,
+            broken: false,
         }
     }
 
@@ -144,23 +169,23 @@ impl Link {
     pub fn link_text(&self) -> String {
         match &self.alias {
             Some(alias) => alias.clone(),
-            None => {
-                match self.link_type() {
-                    LinkType::Internal => { 
-                        if let Some(subtgt) = &self.subtarget { subtgt.to_string() }
-                        else { String::from(".") }
-                    },
-                    LinkType::Note =>
-                    {
-                        if let Some(filename) = self.target.with_extension("").file_name() {
-                            filename.to_string_lossy().to_string()
-                        } else { 
-                            self.target.with_extension("").to_string_lossy().to_string()
-                        }
+            None => match self.link_type() {
+                LinkType::Internal => {
+                    if let Some(subtgt) = &self.subtarget {
+                        subtgt.to_string()
+                    } else {
+                        String::from(".")
                     }
-                    _ => { self.target.to_string_lossy().to_string() }
                 }
-            }
+                LinkType::Note => {
+                    if let Some(filename) = self.target.with_extension("").file_name() {
+                        filename.to_string_lossy().to_string()
+                    } else {
+                        self.target.with_extension("").to_string_lossy().to_string()
+                    }
+                }
+                _ => self.target.to_string_lossy().to_string(),
+            },
         }
     }
 
@@ -177,11 +202,10 @@ impl Link {
         S: Into<String>,
     {
         let raw_target: String = target.into();
-        let (target, subtarget) = &raw_target.split_once("#")
-            .map_or_else(
-                || (PathBuf::from(&raw_target), None),
-                |(t, s)| (PathBuf::from(t), Some(s.into()))
-            ); 
+        let (target, subtarget) = &raw_target.split_once("#").map_or_else(
+            || (PathBuf::from(&raw_target), None),
+            |(t, s)| (PathBuf::from(t), Some(s.into())),
+        );
         Link {
             target: target.to_owned(),
             subtarget: subtarget.to_owned(),
@@ -193,28 +217,37 @@ impl Link {
     }
 
     fn needs_md_ext(path: &str, is_attachment: bool) -> bool {
-        if is_attachment { return false; }
-        if path.len() == 0 { return false; } // Internal link 
+        if is_attachment {
+            return false;
+        }
+        if path.len() == 0 {
+            return false;
+        } // Internal link
 
         let target_path = Path::new(path);
         // Add markdown extension for notes.
         if let Some(ext) = target_path.extension() {
-            if !NOTE_EXT.iter().any(|note_ext| OsStr::from(note_ext) == ext ) {
+            if !NOTE_EXT.iter().any(|note_ext| OsStr::from(note_ext) == ext) {
                 return true;
             }
-        } else { return true; } 
+        } else {
+            return true;
+        }
         false
     }
 
     pub fn parse_dims(&self) -> Option<Dimensions> {
-        if !self.is_attachment { return None; }
+        if !self.is_attachment {
+            return None;
+        }
         let alias = match &self.alias {
-            None => { return None; },
-            Some(a) => a
+            None => {
+                return None;
+            }
+            Some(a) => a,
         };
         utils::parse_dims(alias)
     }
-
 
     ///Construct a new [Link] from an Obsidian-styled reference
     pub fn from_obsidian_link(
@@ -229,21 +262,21 @@ impl Link {
             Some(filename) => filename.as_str().trim(),
             None => "",
         };
-        
+
         let target_path = match Self::needs_md_ext(target, is_attachment) {
             true => PathBuf::from(target.to_owned() + ".md"),
-            false => PathBuf::from(target)
+            false => PathBuf::from(target),
         };
 
-        let alias = captures.name("label")
-                    .map(|v| v.as_str().to_string());
+        let alias = captures.name("label").map(|v| v.as_str().to_string());
         let subtarget = captures
             .name("section")
             .map(|v| v.as_str().to_string())
             .and_then(|name| Some(name.trim().to_owned()));
 
         let exclamation = match is_attachment {
-            true => "!", false => ""
+            true => "!",
+            false => "",
         };
         let source_str = format!("{}[[{}]]", exclamation, obs_link).to_string();
         Ok(Link {
@@ -252,7 +285,7 @@ impl Link {
             alias,
             is_attachment,
             source_string: source_str,
-            broken: false, 
+            broken: false,
         })
     }
 }
@@ -296,7 +329,7 @@ mod tests {
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken: false, 
+            broken: false,
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -327,7 +360,7 @@ mod tests {
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken: false, 
+            broken: false,
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -342,7 +375,7 @@ mod tests {
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken: false, 
+            broken: false,
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -387,7 +420,7 @@ mod tests {
             alias: None,
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken: false, 
+            broken: false,
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -402,7 +435,7 @@ mod tests {
             alias: Some("the note I want to mention".to_string()),
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken:false,
+            broken: false,
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);
@@ -416,7 +449,7 @@ mod tests {
             alias: Some("the note I want to mention".to_string()),
             is_attachment: false,
             source_string: format!("[[{}]]", test_string).to_string(),
-            broken:false, 
+            broken: false,
         };
         let got_link = Link::from_obsidian_link(test_string, false).unwrap();
         assert_eq!(expected_link, got_link);

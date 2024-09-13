@@ -169,7 +169,11 @@ impl<'a> Note<'a> {
         let mut markdown_links =
             Self::find_markdown_links(&path, &base_dir, &content, search_links, ignore);
         links.append(&mut markdown_links);
+
+        let mut raw_links = Self::find_raw_links(&content);
+        links.append(&mut raw_links);
         content = Self::replace_links_by_placeholders(content, &mut placeholders, &links);
+
         // Get the labels of block-refs
         let blockref_labels = Self::find_blockref_labels(&content);
         content =
@@ -271,9 +275,6 @@ impl<'a> Note<'a> {
         let mut content = content;
         for link in links {
             let link_ph = Sanitization::from(link.source_string.to_string());
-            //if link.source_string.contains("diff") {
-            //    info!("Replacing {} with {}", link_ph.original, link_ph.get_placeholder());
-            //}
             content = content.replace(&link_ph.original, &link_ph.get_placeholder());
             placeholders.push(link_ph);
         }
@@ -352,6 +353,10 @@ impl<'a> Note<'a> {
         let mut links = links::find_obsidian_links(content);
         Self::resolve_links(&mut links, ref_path, root_path, search_links, ignore);
         links
+    }
+
+    fn find_raw_links(content: &str) -> Vec<Link> {
+        links::find_raw_links(content)
     }
 
     fn find_markdown_links(
@@ -475,12 +480,16 @@ impl<'a> Note<'a> {
             },
         );
 
-        write!(writer, "{}",
-            template_content.replace(r"{{date}}", &date_string)
-                            .replace(r"{{content}}", &html_content)
-                            .replace(r"{{title}}", &self.title)
-                            .replace(r"{{backlinks}}", &backlink_replacement)
-        ).expect("Couldn't write note contents.");
+        write!(
+            writer,
+            "{}",
+            template_content
+                .replace(r"{{date}}", &date_string)
+                .replace(r"{{content}}", &html_content)
+                .replace(r"{{title}}", &self.title)
+                .replace(r"{{backlinks}}", &backlink_replacement)
+        )
+        .expect("Couldn't write note contents.");
 
         Ok(())
     }
