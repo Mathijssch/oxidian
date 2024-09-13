@@ -8,7 +8,9 @@ use clap::{Parser, Subcommand};
 use oxidian::exporting::{config, exporter};
 
 use oxidian::core::errors;
+use oxidian::exporting::load_static::INDEX_TEMPLATE;
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 type MissingDirectory<'a> = errors::MissingDirectoryError<&'a Path>;
@@ -81,6 +83,12 @@ enum Commands {
         #[arg(short, long)]
         cfg: Option<PathBuf>,
     },
+    #[command(arg_required_else_help = true)]
+    /// Set up a new, minimal project
+    New {
+        /// The directory that will contain the notes
+        dir: PathBuf,
+    },
 }
 
 //fn serve(port: u32) {
@@ -132,7 +140,33 @@ fn main() {
             let output = builder.slugify_path(&file, Some("html")).unwrap();
             println!("{}", output.to_string_lossy());
         }
+        Commands::New { dir } => {
+            trace!("Running new command.");
+            create_new_project(&dir);
+        }
     }
+}
+
+fn create_new_project(dir: &Path) {
+    let config = config::ExportConfig::default();
+    std::fs::create_dir_all(dir).expect(&format!(
+        "Could not create new directory. {}",
+        dir.to_string_lossy()
+    ));
+    // TODO check if it's better to use this:
+    //create_dir_if_not_exists(dir)
+    //
+    let config_path = dir.join("config.toml");
+    config.export(&config_path);
+
+    let index_path = dir.join("index.md");
+    let mut index_file = std::fs::File::create(&index_path).expect(&format!(
+        "Could not create index file at {}",
+        index_path.to_string_lossy()
+    ));
+    index_file
+        .write_all(&INDEX_TEMPLATE.as_bytes())
+        .expect("Failed to write the index file.");
 }
 
 fn default_output_file(dir: &Path) -> PathBuf {
@@ -182,12 +216,7 @@ fn setup_exporter<'a>(
     exporter::Exporter::new(input_dir, output_dir, &cfg)
 }
 
-fn watch(
-        input_dir: PathBuf,
-        output_dir: PathBuf,
-        config_file: Option<PathBuf>,
-        full: bool
-    ) {
+fn watch(input_dir: PathBuf, output_dir: PathBuf, config_file: Option<PathBuf>, full: bool) {
     use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
     let (tx, rx) = std::sync::mpsc::channel();
 

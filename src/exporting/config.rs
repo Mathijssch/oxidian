@@ -1,9 +1,10 @@
-use std::path::{PathBuf, Path};
-use serde_derive::{Serialize, Deserialize};
-use figment::Error;
 use crate::preamble::formatter as fmt;
 use crate::utils::utils;
-
+use figment::Error;
+use serde_derive::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExportConfig {
@@ -20,50 +21,55 @@ pub struct ExportConfig {
     pub search: SearchConfig,
     pub math: MathConfig,
     pub root_path: Option<String>,
-    pub title: String
+    pub title: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SearchConfig {
     /// The amount of characters to store in the search index for each file.
-    pub max_len: usize, 
+    pub max_len: usize,
     /// Enable search
-    pub enable: bool
+    pub enable: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MathEngine {
     Katex,
-    Mathjax
+    Mathjax,
 }
 
 impl fmt::FormatPreamble for MathEngine {
     fn fmt_newcommand(
-            &self,
-            name: &str, 
-            expansion: &str, 
-            n_args: Option<u8>,
-            optional_args: &Option<String>
-        ) -> String {
+        &self,
+        name: &str,
+        expansion: &str,
+        n_args: Option<u8>,
+        optional_args: &Option<String>,
+    ) -> String {
         match self {
-            MathEngine::Mathjax => fmt::MathjaxFormatter::fmt_newcommand(name, expansion, n_args, optional_args),
-            MathEngine::Katex => fmt::KatexFormatter::fmt_newcommand(name, expansion, n_args, optional_args)
+            MathEngine::Mathjax => {
+                fmt::MathjaxFormatter::fmt_newcommand(name, expansion, n_args, optional_args)
+            }
+            MathEngine::Katex => {
+                fmt::KatexFormatter::fmt_newcommand(name, expansion, n_args, optional_args)
+            }
         }
-    } 
+    }
 
     fn fmt_declaremathoperator(&self, name: &str, operator: &str, star: bool) -> String {
         match self {
-            MathEngine::Mathjax => fmt::MathjaxFormatter::fmt_declaremathoperator(name, operator, star),
-            MathEngine::Katex => fmt::KatexFormatter::fmt_declaremathoperator(name, operator, star)
+            MathEngine::Mathjax => {
+                fmt::MathjaxFormatter::fmt_declaremathoperator(name, operator, star)
+            }
+            MathEngine::Katex => fmt::KatexFormatter::fmt_declaremathoperator(name, operator, star),
         }
     }
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MathConfig {
     /// Enable math
-    pub enable: bool, 
+    pub enable: bool,
     pub engine: MathEngine,
     pub preamble_path: Option<PathBuf>,
 }
@@ -71,26 +77,26 @@ pub struct MathConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PerformanceConfig {
     ///Skip notes whose modification dates are older than their destination files in the output
-    ///directory. 
-    pub skip_unchanged_notes: bool, 
+    ///directory.
+    pub skip_unchanged_notes: bool,
     ///Don't copy attachments whose modification dates are older than the those in the output
     ///folder.
     pub skip_cached_attachments: bool,
     ///Search for linked files in the notes directory, when only a filename is given.
-    ///If you have many links in your notes that are given simply as filenames without a path, 
-    ///but your notes are actually stored in subdirectories, 
+    ///If you have many links in your notes that are given simply as filenames without a path,
+    ///but your notes are actually stored in subdirectories,
     ///then we can try to locate them and point the links to the right files in the output.
     ///This may come at a performance penalty, so use with caution. If all your links are fully
     ///specified, this additional searching will never be triggered, so there is no performance hit
     ///in this case.
-    pub search_for_links: bool, 
+    pub search_for_links: bool,
     ///Build a search index.
-    pub build_search_index: bool
+    pub build_search_index: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreationDateConfig {
-    pub use_git: bool, 
+    pub use_git: bool,
 }
 
 impl ExportConfig {
@@ -100,37 +106,40 @@ impl ExportConfig {
     }
 }
 
-impl Default for MathConfig { 
+impl Default for MathConfig {
     fn default() -> Self {
-        MathConfig { 
+        MathConfig {
             enable: true,
             engine: MathEngine::Mathjax,
-            preamble_path: None
+            preamble_path: None,
         }
-    } 
+    }
 }
 
-impl Default for CreationDateConfig { 
+impl Default for CreationDateConfig {
     fn default() -> Self {
         CreationDateConfig { use_git: false }
-    } 
+    }
 }
 
-impl Default for SearchConfig { 
+impl Default for SearchConfig {
     fn default() -> Self {
-        SearchConfig { max_len: 200, enable: true }
-    } 
+        SearchConfig {
+            max_len: 200,
+            enable: true,
+        }
+    }
 }
 
 impl Default for PerformanceConfig {
     fn default() -> Self {
-        PerformanceConfig { 
+        PerformanceConfig {
             skip_unchanged_notes: true,
             skip_cached_attachments: true,
             search_for_links: true,
-            build_search_index: true
+            build_search_index: true,
         }
-    } 
+    }
 }
 
 impl Default for ExportConfig {
@@ -148,7 +157,21 @@ impl Default for ExportConfig {
             search: SearchConfig::default(),
             math: MathConfig::default(),
             root_path: Some("/".to_string()),
-            title: "NOTES".to_string()
+            title: "NOTES".to_string(),
         }
+    }
+}
+
+impl ExportConfig {
+    pub fn export(&self, path: &Path) {
+        // Serialize the struct to a TOML string
+        let toml_string = toml::to_string(&self).expect("Failed to serialize to TOML");
+
+        // Write the TOML string to a file
+        let mut file =
+            File::create(path).expect(&format!("Could not create file {}", path.to_string_lossy()));
+        file.write_all(toml_string.as_bytes())
+            .expect("Failed to write configuration to file.");
+        //Ok(())
     }
 }
