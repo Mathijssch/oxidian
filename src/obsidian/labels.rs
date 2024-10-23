@@ -3,7 +3,7 @@ use log::debug;
 
 lazy_static! {
     static ref OBSIDIAN_LABEL_RE: Regex =
-        Regex::new(r"(?:^|\W)(?P<start>\^)(?P<label>[aA-zZ\d-]*)\n").unwrap();
+        Regex::new(r"^[\s]*(?P<start>\^)(?P<label>[aA-zZ\d-]*)\n").unwrap();
             //beginning of line, or space
 }
 
