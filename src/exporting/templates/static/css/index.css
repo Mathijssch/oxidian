@@ -271,7 +271,8 @@ article {
 }
 
 article p {
-    text-align: justify;
+    /*text-align: justify;*/
+    text-wrap: balance;
 }
 
 
