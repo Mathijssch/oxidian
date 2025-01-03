@@ -11,8 +11,7 @@ use crate::components::link::{Link, LinkType};
 use crate::core::html;
 use crate::core::sanitization::Sanitization;
 use crate::obsidian::{
-    admonitions, headers::HeaderParser, highlights::replace_obs_highlights, labels,
-    links, tags,
+    admonitions, headers::HeaderParser, highlights::replace_obs_highlights, labels, links, tags,
 };
 use crate::utils::{
     filesys, formatting, placeholders,
@@ -74,7 +73,9 @@ impl<'a> Note<'a> {
 
     fn process_links(&self, mut content: String) -> String {
         for link in &self.links {
-            content = content.replace(&link.source_string, &formatting::link_to_html(link));
+            let link_html = formatting::link_to_html(link);
+            debug!("Link {:?} rendered as {}.", link.alias, link_html);
+            content = content.replace(&link.source_string, &link_html);
         }
         content
     }
@@ -493,4 +494,3 @@ impl<'a> Note<'a> {
         Ok(())
     }
 }
-

@@ -2,10 +2,11 @@ use super::utils;
 use crate::core::html;
 use slugify::slugify;
 
-use crate::utils::filesys::slugify_path;
 use super::utils::prepend_slash;
 use crate::components::link::{FileType, Link, LinkType};
 use crate::obsidian::tags::Tag;
+use crate::utils::filesys::slugify_path;
+use log::debug;
 
 fn md_link(text: &str, target: &str) -> String {
     format!("[{}]({})", text, target).to_string()
@@ -43,8 +44,8 @@ fn render_link_aux(tg: &str, text: &str, to_html: bool, classes: Option<&Vec<&st
 fn render_link(link: &Link, to_html: bool) -> String {
     let link_target_str = link.target.to_string_lossy().to_string();
     let link_text = link.link_text();
+    debug!("Link {} has type {:?}", link_text, link.link_type());
 
-    //let mut target_abs = "".to_string();
     match link.link_type() {
         LinkType::Note => {
             // Link to note should point to html page.
@@ -78,18 +79,21 @@ fn render_link(link: &Link, to_html: bool) -> String {
             }
             render_link_aux(&target_abs, &link_text, to_html, None)
         }
-        LinkType::External => md_link(&link_text, &link_target_str),
+        LinkType::External => render_link_aux(&link_target_str, &link_text, to_html, None),
         LinkType::Attachment(filetype) => {
             let target_rel = slugify_path(&link.target, None).unwrap();
             let target_file = prepend_slash(&target_rel).to_string_lossy().to_string();
 
             let mut tag = match filetype {
                 FileType::Image => html::HtmlTag::img(&target_file),
-                FileType::Video => {let mut video_tag = html::HtmlTag::video(&target_file);
-                                    video_tag.with_attr("controls", "");
-                                    video_tag
-                                    }
-                _ => { return render_link_aux(&link_target_str, &link_text, to_html, None); },
+                FileType::Video => {
+                    let mut video_tag = html::HtmlTag::video(&target_file);
+                    video_tag.with_attr("controls", "");
+                    video_tag
+                }
+                _ => {
+                    return render_link_aux(&link_target_str, &link_text, to_html, None);
+                }
             };
 
             if let Some(dims) = link.parse_dims() {

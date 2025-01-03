@@ -215,7 +215,7 @@ impl<'a> HtmlTag<'a>
         let tag_fmt = self.format_tag();
         let tag_attr = self.format_tag_attrs();
         let linebreak = match self.inline {
-            true => " ",
+            true => "",
             false => "\n"
         };
 

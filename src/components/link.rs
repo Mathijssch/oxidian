@@ -1,6 +1,7 @@
 use super::errors;
 use crate::utils::{constants::NOTE_EXT, filesys::relative_to, utils};
 use clap::builder::OsStr;
+use log::debug;
 use regex::Regex;
 use std::path::{Path, PathBuf};
 
@@ -101,9 +102,19 @@ impl Link {
             return LinkType::Attachment(attach_type);
         };
 
-        if &self.target.starts_with("http://")
-            | &self.target.starts_with("https://")
-            | &self.target.starts_with("www.")
+        debug!(
+            "target {:?} starts with http:// {}, https:// {}, www. {}",
+            &self.target,
+            &self.target.starts_with("http://"),
+            &self.target.starts_with("https://"),
+            &self.target.to_string_lossy().starts_with("www.")
+        );
+
+        let target_str = self.target.to_string_lossy();
+
+        if &target_str.starts_with("http://")
+            | &target_str.starts_with("https://")
+            | &target_str.starts_with("www.")
         {
             return LinkType::External;
         };
