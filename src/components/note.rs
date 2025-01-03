@@ -399,11 +399,6 @@ impl<'a> Note<'a> {
         placeholders::disambiguate_protected(&content)
     }
 
-    ///Get rid of the comments and/or other unwanted pieces of text.
-    fn sanitize(content: &str) -> String {
-        strip_comments(content)
-    }
-
     /// Add a backlink to `self`s set of backlinks.
     ///
     /// The provided [Link] should be a link to the note that refers to [self].
@@ -499,15 +494,3 @@ impl<'a> Note<'a> {
     }
 }
 
-fn strip_comments(note: &str) -> String {
-    let mut output = String::with_capacity(note.len());
-    for line in note.lines() {
-        output.push_str(comments::process_line(line));
-        output.push('\n');
-    }
-    output
-}
-
-//pub fn print_text_event(e: &Event) {
-//    println!("{:?}", e);
-//}
