@@ -11,7 +11,7 @@ use crate::components::link::{Link, LinkType};
 use crate::core::html;
 use crate::core::sanitization::Sanitization;
 use crate::obsidian::{
-    admonitions, comments, headers::HeaderParser, highlights::replace_obs_highlights, labels,
+    admonitions, headers::HeaderParser, highlights::replace_obs_highlights, labels,
     links, tags,
 };
 use crate::utils::{
