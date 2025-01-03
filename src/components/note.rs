@@ -170,9 +170,13 @@ impl<'a> Note<'a> {
             Self::find_markdown_links(&path, &base_dir, &content, search_links, ignore);
         links.append(&mut markdown_links);
 
-        let mut raw_links = Self::find_raw_links(&content);
-        links.append(&mut raw_links);
+        //let mut raw_links = Self::find_raw_links(&content);
+        //links.append(&mut raw_links);
         content = Self::replace_links_by_placeholders(content, &mut placeholders, &links);
+
+        let mut raw_links = Self::find_raw_links(&content);
+        content = Self::replace_links_by_placeholders(content, &mut placeholders, &raw_links);
+        links.append(&mut raw_links);
 
         // Get the labels of block-refs
         let blockref_labels = Self::find_blockref_labels(&content);
