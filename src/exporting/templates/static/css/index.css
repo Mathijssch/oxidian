@@ -29,6 +29,7 @@ html {
     --underline-faded: rgb(100, 100, 100);
     --tag-bg: var(--bg-color);
     --tag-text: var(text-faint);
+    --highlight-bg: rgba(235, 223, 193, 0.42);
     --accent-color: rgb(100, 180, 255);
     --nav-width: min(200px, 30%);
     --nav-pad: 10%;
@@ -1070,4 +1071,10 @@ details ul {
 /* Workaround for Pulldown cmark issue: https://github.com/pulldown-cmark/pulldown-cmark/issues/464 */
 .footnote-definition>p {
     display: inline;
+}
+
+.highlight {
+    background: var(--highlight-bg);
+    border-radius: 3px;
+    box-shadow: -7px 0 var(--highlight-bg), 7px 0 var(--highlight-bg); /* Extend background left and right */
 }
