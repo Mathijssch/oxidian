@@ -175,7 +175,7 @@ impl<'a> Exporter<'a> {
 
     fn set_title(&mut self) {
         info!("Adding notebook title");
-        self.note_template = self.note_template.replace("{{title}}", &self.cfg.title);
+        self.note_template = self.note_template.replace("{{name}}", &self.cfg.title);
     }
 
     fn set_search_component(&mut self) {
