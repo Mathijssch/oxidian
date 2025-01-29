@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 lazy_static! {
     static ref OBSIDIAN_NOTE_LINK_RE: Regex = Regex::new(
-        r"^(?P<file>[^#\^|]*)??([#](?P<block>\^)??(?P<section>[^\^\]\[\#]+?))??(\|(?P<label>.+?))??$"
+        r"^(?P<file>[^#|]*)??([#](?P<block>\^)??(?P<section>[^\^\]\[\#]+?))??(\|(?P<label>.+?))??$"
     )
     .unwrap();
 }
