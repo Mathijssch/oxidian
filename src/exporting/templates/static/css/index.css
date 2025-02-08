@@ -552,6 +552,17 @@ a:hover {
     text-decoration-color: var(--underline-faded);
 }
 
+mjx-container[jax="SVG"]>svg a {
+    fill: var(--text-link) !important;
+    stroke: var(--text-link) !important;
+    transition: fill var(--transition-length);
+}
+
+mjx-container[jax="SVG"]>svg a:hover {
+    fill: var(--interactive-accent-hover) !important;
+    stroke: var(--interactive-accent-hover) !important;
+}
+
 article a {
     color: var(--text-link);
 }
@@ -1076,5 +1087,6 @@ details ul {
 .highlight {
     background: var(--highlight-bg);
     border-radius: 3px;
-    box-shadow: -7px 0 var(--highlight-bg), 7px 0 var(--highlight-bg); /* Extend background left and right */
+    box-shadow: -7px 0 var(--highlight-bg), 7px 0 var(--highlight-bg);
+    /* Extend background left and right */
 }
