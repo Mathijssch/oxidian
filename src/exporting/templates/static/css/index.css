@@ -1,9 +1,9 @@
 /* Base */
 
 .dark-mode {
-    --base-color: rgb(50, 50, 50);
-    --bg-color: rgb(60, 60, 60);
-    --bg-backlinks: rgb(70, 70, 70);
+    --base-color: rgb(30, 30, 40);
+    --bg-color: rgb(40, 40, 70);
+    --bg-backlinks: rgb(60, 60, 90);
     --text-color: rgb(240, 240, 240);
     --link-color: var(--text-color);
     --text-link: var(--text-color);
@@ -34,6 +34,7 @@ html {
     --nav-width: min(200px, 30%);
     --nav-pad: 10%;
     --background-modifier-box-shadow: rgba(0, 0, 0, 0.1);
+    --code: var(--accent-color);
 }
 
 /* Cooler selection color */
@@ -313,6 +314,8 @@ pre.HyperMD-codeblock {
 /* Tables */
 table {
     border-collapse: collapse;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 table> :is(thead, tbody)>tr> :is(th, td) {
@@ -367,7 +370,6 @@ article li ol br,
 
 
 html {
-    scroll-behavior: smooth;
     /*body {*/
     --L0: 0%;
     --L1: 100%;
@@ -714,12 +716,13 @@ blockquote p {
 }
 
 /* code */
-code,
+code
 {
 padding: 2px;
 border-radius: 0.5em;
 color: var(--code);
 font-family: var(--font-monospace);
+background: var(--tag-bg);
 }
 
 pre code {
@@ -1089,4 +1092,28 @@ details ul {
     border-radius: 3px;
     box-shadow: -7px 0 var(--highlight-bg), 7px 0 var(--highlight-bg);
     /* Extend background left and right */
+}
+
+red {
+    color: rgb(210, 43, 43);
+}
+
+blue {
+    color: #0F7AAF;
+}
+
+green {
+    color: #63B365;
+}
+
+yellow { 
+    color: #E9AB17;
+}
+
+purple { 
+    color: #5729CE;
+}
+
+orange {
+    color: #FF7034;
 }

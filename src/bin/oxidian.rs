@@ -153,6 +153,10 @@ fn create_new_project(dir: &Path) {
         "Could not create new directory. {}",
         dir.to_string_lossy()
     ));
+    std::fs::create_dir_all(dir).expect(&format!(
+        "Could not create new directory. {}",
+        dir.to_string_lossy()
+    ));
     // TODO check if it's better to use this:
     //create_dir_if_not_exists(dir)
     //
