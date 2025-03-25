@@ -10,6 +10,7 @@ use super::frontmatter::{extract_yaml_frontmatter, parse_frontmatter};
 use crate::components::link::{Link, LinkType};
 use crate::core::html;
 use crate::core::sanitization::Sanitization;
+use crate::obsidian::raw_html;
 use crate::obsidian::{
     admonitions, headers::HeaderParser, highlights::replace_obs_highlights, labels, links, tags,
 };
@@ -163,6 +164,7 @@ impl<'a> Note<'a> {
 
         // Remove code blocks, and math.
         let (mut content, mut placeholders) = Self::remove_protected_elems(content);
+        content = Self::replace_raw_html_blocks_by_placeholders(content, &mut placeholders);
         // Extract the links
         let mut links = Self::find_obsidian_links(&path, base_dir, &content, search_links, ignore);
         // Replace links by placeholders, since they may also contain protected symbols with
@@ -302,6 +304,30 @@ impl<'a> Note<'a> {
             placeholders.push(link_ph);
         }
         content
+    }
+
+    fn replace_raw_html_blocks_by_placeholders(
+        content: String,
+        placeholders: &mut Vec<Sanitization>,
+    ) -> String {
+        let mut raw_html = raw_html::RawHTMLParser::new();
+        let mut output = String::with_capacity(content.len());
+        for line in content.lines() {
+            match raw_html.process_line(line) {
+                raw_html::ParseOutput::Placeholder {
+                    replacement,
+                    placeholder,
+                } => {
+                    output.push_str(&replacement);
+                    if let Some(ph) = placeholder {
+                        placeholders.push(ph);
+                    }
+                }
+                raw_html::ParseOutput::None => output.push_str(line),
+            }
+            output.push('\n');
+        }
+        output
     }
     fn replace_admonitions_by_placeholders(
         content: String,

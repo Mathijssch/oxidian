@@ -1,5 +1,7 @@
 use super::load_static::{
-    BUTTON_CSS, DARKMODE_SCRIPT, FOUC_SCRIPT, HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG, LOAD_KATEX, LOAD_MATHJAX, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_HTML, SEARCH_SCRIPT, STOPWORDS, THM_CSS, TUFTE_CSS
+    BUTTON_CSS, DARKMODE_SCRIPT, FOUC_SCRIPT, HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG,
+    LOAD_KATEX, LOAD_MATHJAX, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_HTML, SEARCH_SCRIPT,
+    STOPWORDS, THM_CSS, TUFTE_CSS,
 };
 use crate::utils::filesys::{copy_directory, relative_to};
 use crate::utils::utils;
@@ -85,8 +87,7 @@ fn get_all_notes<'b>(
 }
 
 impl<'a> Exporter<'a> {
-    pub fn new(
-        input_dir: &'a Path, output_dir: &'a Path, cfg: &'a ExportConfig) -> Self {
+    pub fn new(input_dir: &'a Path, output_dir: &'a Path, cfg: &'a ExportConfig) -> Self {
         let stats = ExportStats::new();
         let note_template = HTML_TEMPLATE.to_string();
         Exporter {
