@@ -20,6 +20,7 @@ pub struct ExportConfig {
     pub performance: PerformanceConfig,
     pub search: SearchConfig,
     pub math: MathConfig,
+    pub enable_mermaid: bool,
     pub root_path: Option<String>,
     pub title: String,
 }
@@ -152,6 +153,7 @@ impl Default for ExportConfig {
             generate_tag_index: true,
             generate_archive: true,
             ignored: vec![],
+            enable_mermaid: true,
             creation_date: CreationDateConfig::default(),
             performance: PerformanceConfig::default(),
             search: SearchConfig::default(),

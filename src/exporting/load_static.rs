@@ -21,6 +21,7 @@ pub const LOAD_MATHJAX: &str = include_str!("templates/snippets/include_mathjax.
 pub const LOAD_KATEX: &str = include_str!("templates/snippets/include_katex.html");
 pub const LOAD_SEARCH: &str = include_str!("templates/snippets/include_search_lib.html");
 pub const SEARCH_HTML: &str = include_str!("templates/snippets/search_bar.html");
+pub const LOAD_MERMAID: &str = include_str!("templates/snippets/include_mermaid.html");
 
 // Binaries
 pub const ICON: &[u8;813] = include_bytes!("templates/static/icon.svg");

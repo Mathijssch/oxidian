@@ -360,14 +360,17 @@ impl<'a> Note<'a> {
         search_links: bool,
         ignore: &Vec<PathBuf>,
     ) {
-        for link in links.iter_mut().filter(|l| l.link_type() == LinkType::Note) {
+        for link in links
+            .iter_mut()
+            .filter(|l| l.link_type() == LinkType::Note || l.link_type() == LinkType::Internal)
+        {
             match filesys::resolve_path(&link.target, ref_path, root_path, search_links, ignore) {
                 filesys::ResolvedPath::Unchanged => {}
                 filesys::ResolvedPath::Broken => {
                     link.set_broken(true);
                 }
                 filesys::ResolvedPath::Updated(new_path) => {
-                    //info!("Updating {:?} to {:?}", link.target, new_path);
+                    // info!("Updating {:?} to {:?}", link.target, new_path);
                     link.set_target(new_path);
                 }
             }

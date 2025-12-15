@@ -32,13 +32,13 @@ pub enum ResolvedPath {
 ///     Otherwise, do nothing.
 pub fn resolve_path<'a>(
     path: &Path,
-    relative_to: &Path,
+    note_path: &Path,
     base_dir: &Path,
     full_search: bool,
     ignore: &'a Vec<PathBuf>
 ) -> ResolvedPath {
     if path.components().next().is_none() {
-        return ResolvedPath::Unchanged;
+        return ResolvedPath::Updated(prepend_slash(relative_to(note_path, base_dir)));
     } // Empty path
       // corresponds to an
       // internal link.
@@ -52,7 +52,7 @@ pub fn resolve_path<'a>(
         return ResolvedPath::Broken;
     }
 
-    let full = relative_to.join(path);
+    let full = note_path.join(path);
     if base_dir.join(&full).exists() {
         return ResolvedPath::Updated(prepend_slash(full));
     }

@@ -1,7 +1,7 @@
 use super::load_static::{
     BUTTON_CSS, DARKMODE_SCRIPT, FOUC_SCRIPT, HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG,
-    LOAD_KATEX, LOAD_MATHJAX, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_HTML, SEARCH_SCRIPT,
-    STOPWORDS, THM_CSS, TUFTE_CSS,
+    LOAD_KATEX, LOAD_MATHJAX, LOAD_MERMAID, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_HTML,
+    SEARCH_SCRIPT, STOPWORDS, THM_CSS, TUFTE_CSS,
 };
 use crate::utils::filesys::{copy_directory, relative_to};
 use crate::utils::utils;
@@ -201,6 +201,15 @@ impl<'a> Exporter<'a> {
         self.note_template = self.note_template.replace("{{MATH_ENGINE}}", replacement);
     }
 
+    fn set_mermaid_loading_snip(&mut self) {
+        info!("Adding snippet to load math engine.");
+        let mut replacement = "";
+        if self.cfg.enable_mermaid {
+            replacement = LOAD_MERMAID;
+        }
+        self.note_template = self.note_template.replace("{{MERMAID}}", replacement);
+    }
+
     fn set_tag_nav(&mut self, tree_html: &str) {
         self.note_template = self.note_template.replace("{{tag_nav}}", tree_html);
     }
@@ -276,6 +285,7 @@ impl<'a> Exporter<'a> {
             info!("Converted preamble in {:?}", Instant::now() - subtime);
         }
         self.set_math_loading_snip();
+        self.set_mermaid_loading_snip();
 
         if self.cfg.search.enable {
             subtime = Instant::now();

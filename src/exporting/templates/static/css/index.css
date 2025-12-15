@@ -272,10 +272,10 @@ article {
     border-width: 1px;
 }
 
-article p {
+/*article p {*/
     /*text-align: justify;*/
-    text-wrap: balance;
-}
+    /*text-wrap: balance;*/
+/*}*/
 
 
 /* Responsive styling */
