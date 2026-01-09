@@ -136,6 +136,9 @@ impl<'a> Exporter<'a> {
         if let Some(dir) = &self.cfg.static_dir {
             result.push(self.input_dir.join(dir));
         };
+        if let Some(dir) = &self.cfg.passthrough_dir {
+            result.push(self.input_dir.join(dir));
+        };
         if let Some(dir) = &self.cfg.template_dir {
             result.push(self.input_dir.join(dir));
         };
@@ -379,6 +382,7 @@ impl<'a> Exporter<'a> {
         // ------------------------------
         subtime = Instant::now();
         self.copy_static_files();
+        self.copy_passthrough_dir();
         info!("Copied static files in {:?}", Instant::now() - subtime);
 
         // ALL DONE  ----------------------------------
@@ -513,6 +517,19 @@ impl<'a> Exporter<'a> {
         self.save_css(ADMONITIONS_CSS, "admonitions.css");
         self.save_css(TUFTE_CSS, "tufte.css");
         self.save_css(THM_CSS, "theorems.css");
+    }
+
+    fn copy_passthrough_dir(&self) {
+        if let Some(force_dir) = &self.cfg.passthrough_dir {
+            info!("Copying pass through directory {:?}", force_dir);
+            let force_dir_path = &self.input_dir.join(force_dir);
+            if let Err(copy_err) = copy_directory(&force_dir_path, &self.output_dir.join(force_dir)) {
+                warn!(
+                    "Could not copy the static directory {:?} to {:?}. Got error {:?}",
+                    force_dir_path, self.output_dir, copy_err
+                );
+            }
+        }
     }
 
     fn copy_static_files(&self) {

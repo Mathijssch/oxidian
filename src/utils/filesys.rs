@@ -1,4 +1,4 @@
-use super::errors::{GetAgeError, FileWriteError, NotePathError};
+use super::errors::{FileWriteError, GetAgeError, NotePathError};
 use super::utils::prepend_slash;
 use crate::utils::constants::NOTE_EXT;
 use log::{debug, error, info, warn};
@@ -8,7 +8,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use std::{ffi::OsStr, fs, io};
-use walkdir::{WalkDir, DirEntry};
+use walkdir::{DirEntry, WalkDir};
 ///Functions to interact with the file system
 
 pub enum ResolvedPath {
@@ -16,7 +16,6 @@ pub enum ResolvedPath {
     Unchanged,
     Updated(PathBuf),
 }
-
 
 /// Several options
 /// 1. `path` is empty. Do nothing.
@@ -35,7 +34,7 @@ pub fn resolve_path<'a>(
     note_path: &Path,
     base_dir: &Path,
     full_search: bool,
-    ignore: &'a Vec<PathBuf>
+    ignore: &'a Vec<PathBuf>,
 ) -> ResolvedPath {
     if path.components().next().is_none() {
         return ResolvedPath::Updated(prepend_slash(relative_to(note_path, base_dir)));
@@ -69,7 +68,9 @@ pub fn resolve_path<'a>(
     ResolvedPath::Broken
 }
 
-fn just_filename(path: &Path) -> bool { path.parent() == Some(Path::new("")) }
+fn just_filename(path: &Path) -> bool {
+    path.parent() == Some(Path::new(""))
+}
 
 /// Create directory if it doesn't exist yet.
 pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
@@ -96,16 +97,20 @@ pub fn create_dir_if_not_exists(path: &Path) -> Result<(), std::io::Error> {
     }
 }
 
-///Find `path` in `base_dir` or a subdirectory thereof. 
+///Find `path` in `base_dir` or a subdirectory thereof.
 ///If no match is found, None is returned.
-pub fn find_recursive<'a>(base_dir: &Path, path: &Path, ignore: &'a Vec<PathBuf>) -> Option<PathBuf> {
+pub fn find_recursive<'a>(
+    base_dir: &Path,
+    path: &Path,
+    ignore: &'a Vec<PathBuf>,
+) -> Option<PathBuf> {
     let filename = match path.file_name() {
         Some(name) => name,
         None => {
             return None;
         }
     };
-    
+
     let entries = walk_ignoring(base_dir, ignore);
     for entry in entries {
         if entry.file_name() == filename {
@@ -156,46 +161,85 @@ pub fn relative_to_with_info<T: AsRef<Path>, U: AsRef<Path>>(
 ///If `relative_to` is not a prefix of `path`, then a copy of `path` is returned.
 pub fn relative_to<T: AsRef<Path>, U: AsRef<Path>>(path: T, relative_to: U) -> PathBuf {
     let path_ref = &path.as_ref();
-    path_ref.canonicalize().unwrap_or_else(|_| path_ref.to_path_buf())
+    path_ref
+        .canonicalize()
+        .unwrap_or_else(|_| path_ref.to_path_buf())
         .strip_prefix(&relative_to.as_ref().canonicalize().unwrap())
         .unwrap_or_else(|_| path_ref)
         .to_owned()
 }
 
-pub fn walk_ignoring<'a>(dir: &Path, ignoring: &'a Vec<PathBuf>) -> impl Iterator<Item=DirEntry> + 'a {
+// pub fn walk_ignoring<'a>(dir: &Path, ignoring: &'a Vec<PathBuf>) -> impl Iterator<Item=DirEntry> + 'a {
+//     WalkDir::new(dir)
+//         .into_iter()
+//         .filter_entry(|entry| {
+//             let result = !ignoring.iter().any(|ignore_dir|
+//                 entry.path() == ignore_dir);
+//             result
+//         })
+//         .filter_map(Result::ok)
+// }
+
+pub fn walk_ignoring<'a>(
+    dir: &Path,
+    ignoring: &'a Vec<PathBuf>,
+) -> impl Iterator<Item = DirEntry> + 'a {
+    // WalkDir::new(dir)
+    //     .into_iter()
+    //     .filter_entry(move |entry| {
+    //         // Check if this entry or any of its ancestors match an ignored path
+    //         !ignoring.iter().any(|ignore_dir| {
+    //             let result = entry.path() == ignore_dir || entry.path().starts_with(ignore_dir);
+    //             info!("Should ignore {:?}: {:?}", entry, result);
+    //             result
+    //         })
+    //     })
+    //     .filter_map(Result::ok)
+    //
     WalkDir::new(dir)
         .into_iter()
-        .filter_entry(|entry| {
-            let result = !ignoring.iter().any(|ignore_dir| entry.path() == ignore_dir);
-            result
+        .filter_entry(move |entry| {
+            let path = entry.path();
+            let should_include = !ignoring
+                .iter()
+                .any(|ignore_dir| path.starts_with(ignore_dir));
+            // if !should_include {
+            //     info!("Should ignore {:?}: true", entry);
+            // }
+            //
+            should_include
         })
         .filter_map(Result::ok)
 }
 
-pub fn move_file<F: AsRef<Path>, T: AsRef<Path>>(from: F, to: T) 
--> Result<(), io::Error> {
+pub fn move_file<F: AsRef<Path>, T: AsRef<Path>>(from: F, to: T) -> Result<(), io::Error> {
     std::fs::rename(from, to)
 }
 
-pub fn remove_file(path: &Path) 
--> Result<(), io::Error> {
+pub fn remove_file(path: &Path) -> Result<(), io::Error> {
     std::fs::remove_file(path)
 }
 
 pub fn is_note<'a>(path: &Path, ignored: &[PathBuf]) -> bool {
+    info!("Comparing {:?} with {:?}", path, ignored);
     if ignored.iter().any(|ignoredir| path.starts_with(ignoredir)) {
         return false;
     }
     let extension = match path.extension() {
         Some(extension) => {
-            let ext_str = extension.to_str(); 
+            let ext_str = extension.to_str();
             match ext_str {
-                Some(ext_str) => ext_str, 
-                None => {return false;}
+                Some(ext_str) => ext_str,
+                None => {
+                    return false;
+                }
             }
-        },
-        None => {return false;}
-    }.to_lowercase();
+        }
+        None => {
+            return false;
+        }
+    }
+    .to_lowercase();
     NOTE_EXT.iter().any(|ext| **ext == extension)
 }
 
@@ -237,10 +281,10 @@ pub fn slugify_path<'a>(
         match component {
             std::path::Component::Normal(os_str) => {
                 output_path.push(slugify!(&os_str.to_string_lossy().as_ref()));
-            }, 
+            }
             std::path::Component::RootDir => {
                 output_path.push("/");
-            },
+            }
             _ => {} // Ignore other components like Prefix, etc.
         }
     }
@@ -259,7 +303,10 @@ pub fn copy_directory<U: AsRef<Path>, T: AsRef<Path>>(src: U, dest: T) -> io::Re
 /// Return true if the modification date of `candidate` occurs before that of `reference`.
 ///
 /// If either `candidate` or `reference` does not exist, an error is returned.
-pub fn is_older<'a>(candidate: &'a Path, reference: &'a Path) -> Result<bool, GetAgeError<&'a Path>> {
+pub fn is_older<'a>(
+    candidate: &'a Path,
+    reference: &'a Path,
+) -> Result<bool, GetAgeError<&'a Path>> {
     if !candidate.is_file() {
         return Err(GetAgeError::MissingFileError(candidate));
     }
@@ -281,13 +328,13 @@ pub fn get_modification_time(path: &Path) -> Result<SystemTime, std::io::Error> 
 pub fn write_bin_to_file(path: &Path, content: &[u8]) -> Result<usize, FileWriteError> {
     if let Some(parent_dir) = path.parent() {
         create_dir_if_not_exists(parent_dir)?;
-            //.expect("Failed to create parent dir for search index.");
+        //.expect("Failed to create parent dir for search index.");
     }
     let file = File::create(&path).expect("Could not create file!");
     let mut writer = std::io::BufWriter::new(file);
     let size = content.len();
     writer.write_all(content)?;
-        //.expect("Could not write content to file");
+    //.expect("Could not write content to file");
     Ok(size)
 }
 
