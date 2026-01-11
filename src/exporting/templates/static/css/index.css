@@ -54,6 +54,8 @@ html {
     box-shadow: 0 0.2rem 0.5rem var(--background-modifier-box-shadow);
 }
 
+todo {color: red}
+todo::before{content: "TODO: "}
 
 /* HTML and body */
 html,
