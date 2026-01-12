@@ -1,7 +1,7 @@
 use super::load_static::{
     BUTTON_CSS, DARKMODE_SCRIPT, FOUC_SCRIPT, HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG,
-    LOAD_KATEX, LOAD_MATHJAX, LOAD_MERMAID, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, SEARCH_HTML,
-    SEARCH_SCRIPT, STOPWORDS, THM_CSS, TUFTE_CSS,
+    LOAD_KATEX, LOAD_MATHJAX, LOAD_MERMAID, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, PRINT_CSS,
+    SEARCH_HTML, SEARCH_SCRIPT, STOPWORDS, THM_CSS, TUFTE_CSS,
 };
 use crate::utils::filesys::{copy_directory, relative_to};
 use crate::utils::utils;
@@ -517,13 +517,15 @@ impl<'a> Exporter<'a> {
         self.save_css(ADMONITIONS_CSS, "admonitions.css");
         self.save_css(TUFTE_CSS, "tufte.css");
         self.save_css(THM_CSS, "theorems.css");
+        self.save_css(PRINT_CSS, "print.css");
     }
 
     fn copy_passthrough_dir(&self) {
         if let Some(force_dir) = &self.cfg.passthrough_dir {
             info!("Copying pass through directory {:?}", force_dir);
             let force_dir_path = &self.input_dir.join(force_dir);
-            if let Err(copy_err) = copy_directory(&force_dir_path, &self.output_dir.join(force_dir)) {
+            if let Err(copy_err) = copy_directory(&force_dir_path, &self.output_dir.join(force_dir))
+            {
                 warn!(
                     "Could not copy the static directory {:?} to {:?}. Got error {:?}",
                     force_dir_path, self.output_dir, copy_err

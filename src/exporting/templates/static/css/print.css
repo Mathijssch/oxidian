@@ -1,0 +1,19 @@
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    article#main,
+    article#main * {
+        visibility: visible;
+    }
+
+    article#main {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        margin-left: auto !important;
+        width: 100%;
+        transform: translateX(-50%);
+    }
+}

@@ -32,6 +32,7 @@ pub const BUTTON_CSS: &str = include_str!("templates/static/css/buttons.css");
 pub const ADMONITIONS_CSS: &str = include_str!("templates/static/css/admonitions.css");
 pub const TUFTE_CSS: &str = include_str!("templates/static/css/tufte.css");
 pub const THM_CSS: &str = include_str!("templates/static/css/theorems.css");
+pub const PRINT_CSS: &str = include_str!("templates/static/css/print.css");
 //pub const ICONS_CSS: &str = include_str!("templates/static/css/material_icons.css");
 
 pub const INDEX_TEMPLATE: &str = include_str!("templates/snippets/index.md");
