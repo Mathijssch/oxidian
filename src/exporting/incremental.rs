@@ -23,13 +23,27 @@ impl<'a> Exporter<'a> {
                 continue;
             }
             info!("Filechange detected in {:?}", path.to_string_lossy());
-            let mut note = Note::new(
-                relative_to(path, std::env::current_dir().unwrap()),
+
+            let curr_dir = match std::env::current_dir() {
+                Ok(x) => x,
+                Err(e) => {
+                    warn!("Filechange detected, but could not request current working dir. Got error: {:?}", e);
+                    continue;
+                }
+            };
+
+            let mut note =  match Note::new(
+                relative_to(&path, &curr_dir),
                 self.input_directory(),
                 self.config().performance.search_for_links,
                 &ignored,
-            )
-            .unwrap();
+            ) {
+                Ok(note) => note,
+                Err(e) => {
+                    warn!("Could not create note at path {:?}. Got error: {:?}", &path, e);
+                    continue;
+                }
+            };
             info!("Recompiling note {:?} at {:?}", note.title, note.path);
             self.compile_note(&mut note, &backlinks);
             // TODO -- update the backlinks for each linked page.
