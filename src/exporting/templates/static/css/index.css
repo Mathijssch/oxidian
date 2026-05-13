@@ -346,6 +346,7 @@ article img {
     width: 80%;
     max-width: 95%;
     height: auto;
+    border-radius: 4px;
     transition: transform .2s background .2s border-color .2s;
 }
 

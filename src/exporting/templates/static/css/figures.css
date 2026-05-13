@@ -1,0 +1,44 @@
+/*Figure counter*/
+/*-----------------*/
+/* initialise the counter */
+body { counter-reset: figureCounter; }
+/* increment the counter for every instance of a figure even if it doesn't have a caption */
+figure { 
+    counter-increment: figureCounter; 
+    text-align: center;
+}
+
+/* Center the image */
+figure img { 
+    /*display: block; */
+    margin: 0 auto; 
+}
+/* prepend the counter to the figcaption content */
+figure figcaption { 
+    margin-top: 0.5em;
+    display: block; 
+}
+
+/* figure figcaption:before { */
+/*     content: "Figure " counter(figureCounter) ": "; */
+/*     font-weight: bold; */
+/* } */
+
+
+/*Add figures side-by-side*/
+
+.img-cols{
+    --columns: 2; /* Default to 2 columns */
+    display: grid;
+    grid-template-columns: repeat(var(--columns), 1fr);
+    gap: 10px;
+}
+
+.img-cols figure {
+    margin: 0px;
+}
+
+.cols-2 { --columns: 2; }
+.cols-3 { --columns: 3; }
+.cols-4 { --columns: 4; }
+

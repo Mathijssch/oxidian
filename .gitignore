@@ -16,3 +16,4 @@ DesignParser.png
 examples/bigger/
 examples/full/
 examples/tricky/
+*.DS_Store

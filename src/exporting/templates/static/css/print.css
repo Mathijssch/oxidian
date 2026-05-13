@@ -1,7 +1,4 @@
 @media print {
-    body * {
-        visibility: hidden;
-    }
 
     article#main,
     article#main * {
@@ -9,11 +6,19 @@
     }
 
     article#main {
-        position: absolute;
-        left: 50%;
-        top: 0;
+        position: relative;       /* keep in flow */
         margin-left: auto !important;
-        width: 100%;
-        transform: translateX(-50%);
+        margin: auto;           /* center horizontally */
+        width: 100%;              /* or whatever width you want */
+        top: 0;                   /* remove absolute top */
+        transform: none;          /* remove transform */
+    }
+
+    #backlinks {
+        display: none;
+    }
+    
+    #navbar-container {
+        display: none;
     }
 }

@@ -15,6 +15,7 @@ pub const NAVBAR_SCRIPT: &str = include_str!("templates/static/js/navbar.js");
 pub const DARKMODE_SCRIPT: &str = include_str!("templates/static/js/toggle_darkmode.js");
 pub const FOUC_SCRIPT: &str = include_str!("templates/static/js/fix_fouc.js");
 pub const BROKEN_LINKS: &str = include_str!("templates/static/js/disable_broken_links.js");
+pub const CLEVEREF: &str = include_str!("templates/static/js/cleveref.js");
 
 // HTML snippets
 pub const LOAD_MATHJAX: &str = include_str!("templates/snippets/include_mathjax.html");
@@ -33,6 +34,7 @@ pub const ADMONITIONS_CSS: &str = include_str!("templates/static/css/admonitions
 pub const TUFTE_CSS: &str = include_str!("templates/static/css/tufte.css");
 pub const THM_CSS: &str = include_str!("templates/static/css/theorems.css");
 pub const PRINT_CSS: &str = include_str!("templates/static/css/print.css");
+pub const FIGURES_CSS: &str = include_str!("templates/static/css/figures.css");
 //pub const ICONS_CSS: &str = include_str!("templates/static/css/material_icons.css");
 
 pub const INDEX_TEMPLATE: &str = include_str!("templates/snippets/index.md");

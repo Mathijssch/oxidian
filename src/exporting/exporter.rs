@@ -1,7 +1,7 @@
 use super::load_static::{
-    BUTTON_CSS, DARKMODE_SCRIPT, FOUC_SCRIPT, HTML_TEMPLATE, ICON, INDEX_CSS, KATEX_CFG,
-    LOAD_KATEX, LOAD_MATHJAX, LOAD_MERMAID, LOAD_SEARCH, MATHJAX_CFG, NAVBAR_SCRIPT, PRINT_CSS,
-    SEARCH_HTML, SEARCH_SCRIPT, STOPWORDS, THM_CSS, TUFTE_CSS,
+    BUTTON_CSS, CLEVEREF, DARKMODE_SCRIPT, FIGURES_CSS, FOUC_SCRIPT, HTML_TEMPLATE, ICON,
+    INDEX_CSS, KATEX_CFG, LOAD_KATEX, LOAD_MATHJAX, LOAD_MERMAID, LOAD_SEARCH, MATHJAX_CFG,
+    NAVBAR_SCRIPT, PRINT_CSS, SEARCH_HTML, SEARCH_SCRIPT, STOPWORDS, THM_CSS, TUFTE_CSS,
 };
 use crate::utils::filesys::{copy_directory, relative_to};
 use crate::utils::utils;
@@ -509,6 +509,7 @@ impl<'a> Exporter<'a> {
         self.save_javascript(DARKMODE_SCRIPT, "toggle_darkmode.js");
         self.save_javascript(FOUC_SCRIPT, "fix_fouc.js");
         self.save_javascript(BROKEN_LINKS, "disable_broken_links.js");
+        self.save_javascript(CLEVEREF, "cleveref.js");
     }
 
     fn save_default_css(&self) {
@@ -518,6 +519,7 @@ impl<'a> Exporter<'a> {
         self.save_css(TUFTE_CSS, "tufte.css");
         self.save_css(THM_CSS, "theorems.css");
         self.save_css(PRINT_CSS, "print.css");
+        self.save_css(FIGURES_CSS, "figures.css");
     }
 
     fn copy_passthrough_dir(&self) {
