@@ -63,7 +63,7 @@ body {
     margin: 0px;
     height: 100%;
     font-weight: 400;
-    font-size: 10pt;
+    font-size: 12pt;
     line-height: 1.4;
     color: var(--text-color);
     background-color: var(--base-color);
@@ -75,10 +75,11 @@ body {
 }
 
 .btn-group {
-    width: 100%;
-    height: 20px;
-    display: grid;
-    grid-template-columns: 80% 10%;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
 }
 
 /* Sidebar styling */
@@ -98,12 +99,6 @@ div#navbar-container {
 
 .expand {
     transition-property: width;
-    transition-duration: 200ms;
-    transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.shift-anim {
-    transition-property: margin-left;
     transition-duration: 200ms;
     transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -264,9 +259,8 @@ article {
     padding-right: 20px;
     padding-bottom: 20px;
     border-radius: 5px;
-    margin: 30px 30px 100px 340px;
-    /* margin-left: max(calc(var(--nav-pad) + var(--nav-width) + 100px), 40%); */
-    max-width: min(600px, 90%);
+    margin: 30px auto 100px auto;
+    max-width: min(720px, 90%);
     min-width: 300px;
     height: 100%;
     background-color: var(--bg-color);
@@ -292,6 +286,11 @@ article {
     nav br,
     #desc {
         display: none;
+    }
+
+    /* On small screens, the sidebar overlays the full screen when open */
+    div#navbar-container {
+        max-width: 100%;
     }
 }
 

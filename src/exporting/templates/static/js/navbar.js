@@ -1,5 +1,4 @@
 const MINWIDTH = 140;
-const MARGIN_ARTICLE = 20;
 const DEFAULT_NAV_WIDTH = 200;  // Default width of the navbar in pixels 
 const IDNavWidth = "navwidth";  // ID in localstorage for the navigator width.
 const SMALLWIDTHTHRES = 500;    // Threshold for small screen sizes.
@@ -7,9 +6,6 @@ const SMALLWIDTHTHRES = 500;    // Threshold for small screen sizes.
 let resizer = document.getElementById("navbar_resizer");
 let navbar = document.querySelector("#navbar");
 let navbarContainer = document.querySelector("#navbar-container");
-let main = document.querySelector("#main");
-let rectangle = navbar.getBoundingClientRect();
-let currX = rectangle.x + rectangle.width;
 let dragging = false;
 
 //window.onload = initialize;
@@ -24,10 +20,8 @@ function isClosed(navbar) {
     return navbar.style.visibility == "hidden";
 }
 
-function configureVertical(x) {
-    //Configure the screen for vertical mode. 
-    navbar.style.width = "100%";
-    main.style.width = "100%";
+function isSmallScreen() {
+    return window.innerWidth <= SMALLWIDTHTHRES;
 }
 
 function loadStoredWidth() {
@@ -41,14 +35,12 @@ function loadStoredWidth() {
 
 
 function setWidthRaw(width) {
-    //Auxiliary function that sets the width of the nav (and the main section)
+    //Auxiliary function that sets the width of the nav
     let style = getComputedStyle(navbarContainer)
     let newWidth = (width - (parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)));
-    navbarContainer.style.width = newWidth + "px";
-    style = getComputedStyle(navbarContainer);
     let maxwidth = parseFloat(getComputedStyle(document.body).getPropertyValue('--max-nav-width'));
     newWidth = Math.min(newWidth, maxwidth);
-    main.style.marginLeft = MARGIN_ARTICLE + newWidth + "px";
+    navbarContainer.style.width = newWidth + "px";
 }
 
 function setWidth(width) {
@@ -61,19 +53,23 @@ function setWidth(width) {
     }
 }
 
-/* Set the width of the sidebar to 250px and the left margin of the page content to 250px */
+/* Toggle the sidebar open */
 function onNavButton() {
-    setWidth(DEFAULT_NAV_WIDTH);
+    if (isSmallScreen()) {
+        // On small screens, open full-width overlay
+        navbarContainer.style.width = "100%";
+        navbar.style.visibility = "visible";
+        document.getElementById("navbutton").style.visibility = "hidden";
+    } else {
+        setWidth(DEFAULT_NAV_WIDTH);
+    }
 }
 
-/* Set the width of the sidebar to 250px and the left margin of the page content to 250px */
+/* Open the sidebar */
 function openNav() {
     animationExpand();
-    animationShiftArticle();
     navbar.style.visibility = "visible";
     document.getElementById("navbutton").style.visibility = "hidden";
-    // document.getElementById("navbar_resizer").style.left = "";
-    // document.getElementById("navbar_resizer").style.right = "0px";
     localStorage.setItem(IDNavWidth, navbar.style.width);
 }
 
@@ -84,31 +80,17 @@ function animationExpand() {
     }, 500)
 }
 
-function animationShiftArticle() {
-    main.classList.add("shift-anim");
-    setTimeout(() => {
-        navbarContainer.classList.remove('shift-anim')
-    }, 500)
-}
-
-
-/* Set the width of the sidebar to 0 and the left margin of the page content to 0 */
+/* Set the width of the sidebar to 0 */
 function closeNav() {
     // Disable the navbar itself 
     animationExpand();
-    animationShiftArticle();
     navbar.style.visibility = "hidden";
     // Enable the hamburger button 
     let hamburger = document.getElementById("navbutton");
     hamburger.style.visibility = "visible";
 
-    // Set the width of the navbar container to the width of the hamburger button.
-    let hamburgerRect = hamburger.getBoundingClientRect();
-    navbarContainer.style.width = hamburgerRect.width + "px";
-    document.getElementById("main").style.marginLeft = "100px";
-    document.getElementById("navbar_resizer").style.visibility = "visible";
-    // document.getElementById("navbar_resizer").style.right = "0px";
-    document.getElementById("main").style.marginLeft = hamburgerRect.width + MARGIN_ARTICLE + "px";
+    // Collapse the navbar container
+    navbarContainer.style.width = "0px";
     localStorage.setItem(IDNavWidth, 0);
 }
 
@@ -152,7 +134,4 @@ function pauseEvent(e) {
 }
 
 
-function onResizeWindow() {
-    // initialize();
-}
 

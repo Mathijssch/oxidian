@@ -12,12 +12,8 @@ button {
 
 button.closebtn {
     background: none;
-    padding-right: 5px;
-    padding-top: 5px;
+    padding: 5px;
     color: var(--text-color);
-    position: absolute;
-    right: 0px;
-    top: 0px;
 }
 
 button.openbtn {
@@ -33,12 +29,13 @@ button:hover {
 }
 
 #navbutton {
-    padding: 0;
+    padding: 4px;
     top: 0;
     left: 0;
     min-width: 20px;
     list-style-type: none;
     visibility: hidden;
     position: fixed;
+    z-index: 11;
 }
 
